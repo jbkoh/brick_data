@@ -1,0 +1,3 @@
+[submodule "brick-server/sparqlwrapper_brick"]
+	path = brick-server/sparqlwrapper_brick
+	url = git@github.com:jbkoh/sparqlwrapper_brick.git
