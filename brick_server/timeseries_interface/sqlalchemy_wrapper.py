@@ -8,6 +8,8 @@ from sqlalchemy.dialects import postgresql
 
 import pdb
 
+# Assuming TimescaleDB is installed
+
 Base = declarative_base()
 
 TABLE_NAME = 'brick_data'
@@ -26,10 +28,10 @@ class SqlalchemyTimeseries(object):
         self.db = create_engine(db_str)
         self.conn = self.db.connect()
         meta = MetaData(self.db)
-        self.table = Table(TABLE_NAME, meta,
-                           Column('uuid', String),
-                           Column('time', DateTime),
-                           Column('value', Float))
+        #self.table = Table(TABLE_NAME, meta,
+        #                   Column('uuid', String),
+        #                   Column('time', DateTime),
+        #                   Column('value', Float))
         Session = sessionmaker(self.db)
         self.s= Session()
         try:
@@ -38,21 +40,12 @@ class SqlalchemyTimeseries(object):
             print(e)
             pdb.set_trace()
 
-    def _init_table(self):
-        sql = """
-        CREATE TABLE brick_data (
-            time TIMESTAMPTZ NOT NULL,
-            uuid TEXT NOT NULL,
-            value DOUBLE PRECISION NULL
-            );
-
-        CREATE INDEX uuid_idx on brick_data (uuid);
-        CREATE INDEX time_idx on brick_data (time);
-        SELECT create_hypertable('brick_data', 'time', 'uuid');
-        """
-        #CREATE UNIQUE INDEX row_idx on brick_data (uuid,time);
-
     def add_data(self, data):
+        """
+        data = [
+            ('uuid1', 1524593989, 70.0) # the second value is a unix timestamp.
+            ]
+        """
         objs = [{'uuid': datum[0],
                  'time': datetime.fromtimestamp(datum[1]),
                  'value': datum[2]}
@@ -76,17 +69,6 @@ class SqlalchemyTimeseries(object):
             end_time = datetime.fromtimestamp(end_time)
             data = data.filter(BrickData.time < end_time)
         res = data.all()
-
-
-    def add_data_dep(self, data):
-        if not data:
-            raise Exception('Empty data to insert')
-        objs = [BrickData(uuid=datum[0],
-                          time=datetime.fromtimestamp(datum[1]),
-                          value=datum[2])
-                for datum in data]
-        self.s.bulk_save_objects(objs)
-        self.s.commit()
 
 
 if __name__ == '__main__':
