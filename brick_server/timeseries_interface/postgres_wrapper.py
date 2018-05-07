@@ -1,48 +1,186 @@
-import psycopg2
-from psycopg2.extras import execute_values
 import pdb
 from datetime import datetime
+import pandas as pd
+
+from shapely.geometry import LineString, Point
+from shapely import wkb
+import psycopg2
+from psycopg2.extras import execute_values
+from geoalchemy2.shape import from_shape
+#from postgis.psycopg import register
+#from postgis import Point
+
+class PostgresInterface(object):
+    def __init__(self, dbname, table_name, user, pw, host, port=5601):
+        self.DB_NAME = dbname
+        self.TABLE_NAME = table_name
+        conn_str = "dbname='{dbname}' host='{host}' port='{port}' " \
+            .format(dbname=self.DB_NAME, host=host, port=port) + \
+            "password='{pw}' user='{user}'".format(user=user, pw=pw)
+        self.conn = psycopg2.connect(conn_str)
+
+    def _get_cursor(self):
+        return self.conn.cursor()
+
+    def _exec_query(self, qstr):
+        cur = self._get_cursor()
+        cur.execute(qstr)
+        raw_res = cur.fetchall()
+        return raw_res
+
+    def raw_query(self, qstr):
+        raw_res = self._exec_query(qstr)
+        # TODO: Process it.
+        return raw_res
+
 
 class BrickTimeseries(object):
     def __init__(self, dbname, user, pw, host, port=5601):
         self.DB_NAME = dbname
         self.TABLE_NAME = 'brick_data'
-        self.conn = psycopg2.connect(
-            "dbname='{dbname}' user='{user}' host='{host}' port='{port}' password='{pw}'".format(
-                dbname=self.DB_NAME, user=user, pw=pw, host=host, port=port))
-        self.cur = self.conn.cursor()
+        conn_str = "dbname='{dbname}' host='{host}' port='{port}' " \
+            .format(dbname=self.DB_NAME, host=host, port=port) + \
+            "password='{pw}' user='{user}'".format(user=user, pw=pw)
+        self.conn = psycopg2.connect(conn_str)
+        #self.cur = self.conn.cursor()
 
     def _get_cursor(self):
         return self.conn.cursor()
 
+    def display_data(self, res):
+        times = []
+        uuids = []
+        values = []
+        locs = []
+        for row in res:
+            [uuid, t, value, loc] = row
+            times.append(t)
+            uuids.append(uuid)
+            values.append(value)
+            locs.append(loc)
+        df = pd.DataFrame({
+            'time': times,
+            'uuid': uuids,
+            'value': values,
+            'loc': locs
+        })
+        pdb.set_trace()
+        print(df)
+
     def get_all_data(self, query=''):
         cur = self._get_cursor()
-        cur.execute("""SELECT (uuid, time, value) FROM {0}""".format(self.TABLE_NAME))
+        cur.execute("""SELECT uuid, time, value, ST_AsGeoJson(loc) FROM {0}""".format(self.TABLE_NAME))
         res = cur.fetchall()
+        return res
+
+    def _format_select_res(self, res):
+        # TODO: Implement
+        return res
+
+    def _exec_query(self, qstr):
+        cur = self._get_cursor()
+        cur.execute(qstr)
+        raw_res = cur.fetchall()
+        return raw_res
+
+    def _timestamp2str(self, ts):
+        return datetime.fromtimestamp(ts)
+
+    def raw_query(self, qstr):
+        raw_res = self._exec_query(qstr)
+        res = self._format_select_res(raw_res)
         pdb.set_trace()
+        return res
 
     def query(self, begin_time=None, end_time=None, uuids=[]):
+        pdb.set_trace()
+        qstr = """
+        SELECT uuid, time, value, ST_AsGeoJson(loc) FROM {0}
+        """.format(self.TABLE_NAME)
         if not (begin_time or end_time or uuids):
-            return self.get_all_data()
+            qstr += 'DUMY' # dummy characters to be removed.
+        else:
+            qstr += 'WHERE\n'
+            if begin_time:
+                qstr += "time >= '{0}'\n AND "\
+                    .format(self._timestamp2str(begin_time))
+            if end_time:
+                qstr += "time < '{0}'\n AND "\
+                    .format(self._timestamp2str(end_time))
+            if uuids:
+                qstr += "uuid IN ({0})\n AND "\
+                    .format("'" + "', '".join(uuids) + "'")
+        qstr = qstr[:-4]
+        raw_res = self._exec_query(qstr)
+        res = self._format_select_res(raw_res)
+        return res
 
-    def add_data(self, data):
+
+    def _encode_value_data(self, data):
+        return [(datum[0], self._timestamp2str(datum[1]), datum[2])
+                for datum in data]
+
+    def _encode_loc_data(self, data):
+        data = [(datum[0],
+                 self._timestamp2str(datum[1]),
+                 Point((datum[2][0], datum[2][1])).wkb_hex
+                 ) for datum in data]
+        return data
+
+    def _add_value_data(self, data):
+        cur = self._get_cursor()
+        sql = """
+              INSERT INTO {0}(uuid, time, value)
+              VALUES %s
+
+              ON CONFLICT (time, uuid) DO UPDATE SET value = excluded.value;
+              """.format(self.TABLE_NAME)
+        encoded_data = self._encode_value_data(data)
+        execute_values(cur, sql, encoded_data)
+        self.conn.commit()
+
+    def _add_loc_data(self, data):
+        cur = self._get_cursor()
+        sql = """
+              INSERT INTO {0}(uuid, time, loc)
+              VALUES %s
+              ON CONFLICT (time, uuid) DO UPDATE SET loc = excluded.loc;
+              """.format(self.TABLE_NAME)
+        encoded_data = self._encode_loc_data(data)
+        execute_values(cur, sql, encoded_data)
+        self.conn.commit()
+
+    def _add_loc_data_dep(self, data):
+        cur = self._get_cursor()
+        sql = """
+          INSERT INTO {0}(uuid, time, loc)
+          VALUES (%(uuid)s, %(time)s, ST_SetSRID(%(geom)s::geometry, %(srid)s))
+          ON CONFLICT (time, uuid) DO UPDATE SET loc = excluded.loc;
+          """.format(self.TABLE_NAME)
+        for datum in data:
+            point = Point((datum[2][0], datum[2][1]))
+            cur.execute(sql,
+                        {'geom': point.wkb_hex,
+                         'srid': 4326,
+                         'uuid': datum[0],
+                         'time': self._timestamp2str(datum[1])
+                         })
+        self.conn.commit()
+
+    def add_data(self, data, data_type='value'):
         """
         - input
             - uuid (str): a unique id of one sensor
             - data (list(tuple)): timeseries data. E.g., [(1055151, 70.0), 1055153, 70.1)]
         """
+        assert data_type in ['value', 'loc'] # TODO: Make these ENUM.
+
         if not data:
             raise Exception('Empty data to insert')
-        sql = """
-              INSERT INTO {0}(uuid, time, value)
-              VALUES %s
-              """.format(self.TABLE_NAME)
-        encoded_data = [(datum[0], datetime.fromtimestamp(datum[1]), datum[2])
-                        for datum in data]
-        cur = self._get_cursor()
-        execute_values(cur, sql, encoded_data)
-        self.conn.commit()
-        pdb.set_trace()
+        if data_type == 'value':
+            self._add_value_data(data)
+        elif data_type == 'loc':
+            self._add_loc_data(data)
 
 if __name__ == '__main__':
     dbname = 'brick'
@@ -58,4 +196,13 @@ if __name__ == '__main__':
         ['id21', 1524437788, 70.5],
     ]
     brick_ts.add_data(data)
-    brick_ts.query_data()
+
+    loc_data = [
+        ['id1', 1524436788, [0,0]],
+        ['id2', 1524436788, [0,1]],
+    ]
+    brick_ts.add_data(loc_data, 'loc')
+
+    res = brick_ts.query()
+    brick_ts.display_data(res)
+    print(res)

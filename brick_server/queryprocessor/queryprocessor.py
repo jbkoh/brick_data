@@ -1,6 +1,16 @@
 import pdb
 
-from querysynthesizer import TimescaledbSynthesizer, BrickSynthesizer
+from .querysynthesizer import TimescaledbSynthesizer, BrickSynthesizer
+
+from ..timeseries_interface import BrickTimeseries
+from ..building_structure import BuildingStructure
+from ..sparqlwrapper_brick import BrickEndpoint
+from ..common import TS_DB, BRICK_DB, STRUCT_DB
+
+"""
+All DB interfaces should return UUID or URI tuples in the current result set additionally.
+(variable_names per tuple, a list of tuples)
+"""
 
 """
 Example queries:
@@ -22,9 +32,6 @@ Example queries:
 }
 """
 
-TS_DB = 'timescaledb'
-BRICK_DB = 'brickdb'
-
 class QueryProcessor(object):
     def __init__(self, dbs, synthesizers):
         """
@@ -44,6 +51,12 @@ class QueryProcessor(object):
     def _exec_query(self, qtype, qstr):
         pass
 
+    def exec_queries(self, queries, common_vars):
+        tot_res = []
+        for i, (db_name, query) in enumerate(queries):
+            db = self.dbs[db_name]
+            #curr_res = db.
+
     def synthesize_query(self, db_name, curr_result, qstr):
         # Naive implementation for TimescaleDB only for now
         if db_name == TS_DB:
@@ -53,9 +66,24 @@ class QueryProcessor(object):
             new_qstr = qstr
         return new_qstr
 
+    def query(self, query):
+        common_vars = query['common_variables']
+        pseudo_queries = query['queries']
+        common_results = {common_var: [] for common_var in common_vars}
+        raw_results = []
+        results = []
+        for db_name, pseudo_query in pseudo_queries:
+            db = self.dbs[db_name]
+            synth = self.synthesizers[db_name] # TODO: merge this into the db
+            queries = synth.synthesize_query(pseudo_query, common_vars, common_results)
+            for db_query in queries: #TODO: currently assuming one query produced
+                res = db.raw_query(db_query)
+                common_res, raw_res = db.parse_result(res)
+            found_vars = tuple(common_res[0])
+            common_results[found_vars] = common_res[1]
+            raw_results.append(raw_res)
 
-
-    def plan_query(self, query):
+    def plan_query_dep(self, query):
         """
         ## params
         - query (dict): queries in JSON
@@ -70,13 +98,15 @@ class QueryProcessor(object):
         }
 
         #for db_name, qstr in queries.items():
+        planned_queries = []
         for db_name in [BRICK_DB, TS_DB]:
             qstr = queries[db_name]
             db = self.dbs[db_name]
             modified_query = self.synthesize_query(db_name, curr_results, qstr)
             #res = db.query_data(modified_query)
             #curr_results[db_name] = res
-            pdb.set_trace()
+            planned_queries.append((db_name, modified_query))
+        return planned_queries
 
 if __name__ == '__main__':
     sparql_query = """
@@ -96,21 +126,35 @@ if __name__ == '__main__':
         value > 70
         """
     query = {
-        'variables': ['?znt', '?cc'],
+        'common_variables': ['?znt', '?cc'],
         'queries': {
             BRICK_DB: sparql_query,
             TS_DB: ts_query
         }
     }
+
+    # Init dbs
+    sparql_endpoint = BrickEndpoint('http://localhost:8890/sparql', '1.0.3')
+    endpoint.load_schema()
+    dbname = 'brick'
+    user = 'bricker'
+    pw = 'brick-demo'
+    host = 'localhost'
+    port = 6001
+    brick_ts = BrickTimeseries(dbname, user, pw, host, port)
+    struct_db = BuildingStructure(dbname, user, pw, host, port)
+
     dbs = {
-        BRICK_DB: 'aaa',
-        TS_DB: 'bbb'
+        BRICK_DB: sparql_endpoint,
+        TS_DB: brick_ts,
+        STRUCT_DB: struct_db,
     }
+
+    # Adapt query, which is ignored for now. (just bypassing)
     synthesizers = {
         BRICK_DB: BrickSynthesizer(),
-        TS_DB: TimescaledbSynthesizer()
+        TS_DB: TimescaledbSynthesizer(),
+        STRUCT_DB: None,
     }
     proc = QueryProcessor(dbs, synthesizers)
-    proc.plan_query(query)
-
-
+    planned_queries = proc.plan_query(query)
