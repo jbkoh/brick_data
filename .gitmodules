@@ -1,6 +1,6 @@
 [submodule "brick-server/sparqlwrapper_brick"]
 	path = brick-server/sparqlwrapper_brick
 	url = git@github.com:jbkoh/sparqlwrapper_brick.git
-[submodule "brick_server/sparqlwrapper_brick"]
-	path = brick_server/sparqlwrapper_brick
+[submodule "brick_federation/sparqlwrapper_brick"]
+	path = brick_federation/sparqlwrapper_brick
 	url = git@github.com:jbkoh/sparqlwrapper_brick.git

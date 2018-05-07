@@ -1,11 +1,11 @@
 import pdb
 
-from brick_server.timeseries_interface import BrickTimeseries
-from brick_server.building_structure import BuildingStructure
-from brick_server.sparqlwrapper_brick import BrickEndpoint
-from brick_server.queryprocessor.queryprocessor import QueryProcessor
-from brick_server.queryprocessor.querysynthesizer import *
-from brick_server.common import TS_DB, BRICK_DB, STRUCT_DB
+from brick_federation.timeseries_interface import BrickTimeseries
+from brick_federation.building_structure import BuildingStructure
+from brick_federation.sparqlwrapper_brick import BrickEndpoint
+from brick_federation.queryprocessor.queryprocessor import QueryProcessor
+from brick_federation.queryprocessor.querysynthesizer import *
+from brick_federation.common import TS_DB, BRICK_DB, STRUCT_DB
 
 
 # Init dbs
@@ -70,8 +70,6 @@ query = {
     'common_variables': common_vars,
     'queries': queries
 }
-
-
 
 proc = QueryProcessor(dbs, synthesizers)
 proc.query(query)

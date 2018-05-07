@@ -4,8 +4,8 @@ import arrow
 import pdb
 import random
 
-from brick_server.timeseries_interface import *
-from brick_server.sparqlwrapper_brick import BrickEndpoint
+from brick_federation.timeseries_interface import *
+from brick_federation.sparqlwrapper_brick import BrickEndpoint
 
 brick_db = BrickEndpoint('http://localhost:8890/sparql', '1.0.3')
 ts_db = SqlalchemyTimeseries(
