@@ -40,6 +40,7 @@ sparql.add_triple(room_uri, 'bf:hasGeometry', room_geom_uri)
 
 
 # Add person tracking timeseries data
+# She is linearly moving from (0, 0) to (0.0001, 0.0001).
 max_steps = 100
 base_time = 1525578457
 delta_t = 5 # seconds
