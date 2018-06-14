@@ -20,8 +20,6 @@ class BrickSparql(object):
         self.sparql.queryType= SELECT
         self.sparql.setCredentials('dba', 'dba')
         self.sparql.setHTTPAuth(DIGEST)
-        if load_schema:
-            self._load_schema()
         if not base_ns:
             base_ns = 'http://example.com/'
         self.BASE = Namespace(base_ns)
@@ -65,10 +63,8 @@ class BrickSparql(object):
             self.q_prefix += 'prefix {0}: {1}\n'.format(prefix, ns_n3)
         self.q_prefix += '\n'
 
-        self._init_brick_constants()
-
-    def _init_brick_constants(self):
-        self.HAS_LOC = URIRef(self.BF + 'hasLocation')
+        if load_schema:
+            self._load_schema()
 
     def _get_sparql(self):
         # If need to optimize accessing sparql object.
