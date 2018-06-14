@@ -24,3 +24,6 @@ This project is to federate different data models necessary for various applicat
 - Scenario: A person walks from a point to another linearly and there is a room. Check if the person is in the room at certain point
 - [data insertion](https://github.com/jbkoh/brick-federation/blob/master/sample_data/gen_sample_gis_data.py)
 - [query](https://github.com/jbkoh/brick-federation/blob/master/gis_test1.py)
+
+# Primary Projects dependent on this
+- [Brick Server](git@github.com:jbkoh/brick-server.git)
