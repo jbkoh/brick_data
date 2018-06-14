@@ -40,6 +40,7 @@ class BrickSparql(object):
 
         self.namespaces = {
             '': self.BASE,
+            'base': self.BASE,
             'brick':self.BRICK,
             'bf': self.BF,
             'brick_tag': self.BRICK_TAG,
@@ -191,8 +192,8 @@ class BrickSparql(object):
         res = self.update(q)
 
 
-    def add_brick_instance(self, entity_name, tagset):
-        entity = URIRef(self.BASE + entity_name)
+    def add_brick_instance(self, entity_id, tagset):
+        entity = URIRef(self.BASE + entity_id)
         tagset = URIRef(self.BRICK + tagset)
         triples = [(entity, RDF.type, tagset)]
         self._add_triples(triples)
