@@ -12,7 +12,7 @@ import pdb
 
 class BrickSparql(object):
 
-    def __init__(self, sparql_url, brick_version, base_ns=''):
+    def __init__(self, sparql_url, brick_version, base_ns='', load_schema=False):
         self.BRICK_VERSION = brick_version
         self.sparql_url = sparql_url
         self.sparql = SPARQLWrapper(endpoint=self.sparql_url,
@@ -20,6 +20,8 @@ class BrickSparql(object):
         self.sparql.queryType= SELECT
         self.sparql.setCredentials('dba', 'dba')
         self.sparql.setHTTPAuth(DIGEST)
+        if load_schema:
+            self._load_schema()
         if not base_ns:
             base_ns = 'http://example.com/'
         self.BASE = Namespace(base_ns)
@@ -199,7 +201,7 @@ class BrickSparql(object):
         self._add_triples(triples)
         return str(entity)
 
-    def load_schema(self):
+    def _load_schema(self):
         schema_urls = [str(ns)[:-1] + '.ttl' for ns in
                        [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]]
         load_query_template = 'LOAD <{0}> into <{1}>'
@@ -211,7 +213,7 @@ class BrickSparql(object):
 
 if __name__ == '__main__':
     endpoint = BrickEndpoint('http://localhost:8890/sparql', '1.0.3')
-    endpoint.load_schema()
+    endpoint._load_schema()
     test_qstr = """
         select ?s where {
         ?s rdfs:subClassOf+ brick:Temperature_Sensor .
