@@ -75,22 +75,19 @@ class BrickSparql(object):
 
     def _format_select_res(self, raw_res):
         var_names = raw_res['head']['vars']
-        try:
-            values = [[row[var_name]['value'] for var_name in var_names]
-                  for row in raw_res['results']['bindings']]
-        except:
-            pdb.set_trace()
+        tuples = [[row[var_name]['value'] for var_name in var_names]
+              for row in raw_res['results']['bindings']]
         #TODO: Below line is a hack.
         var_names = ['?'+var_name for var_name in var_names]
-        return [var_names, values]
+        return {
+            'var_names': var_names,
+            'tuples': tuples
+        }
 
     def parse_result(self, res):
         raw_res = res
         common_res = res
         return common_res, raw_res
-
-    def raw_query(self, qstr):
-        return self.query(qstr)
 
     def query(self, qstr, is_update=False):
         sparql = self._get_sparql()
