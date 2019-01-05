@@ -4,7 +4,7 @@ import arrow
 import pdb
 import random
 
-from brick_data.timeseries_interface import *
+from brick_data.timeseries import *
 from brick_data.sparqlwrapper_brick import BrickEndpoint
 
 brick_db = BrickEndpoint('http://localhost:8890/sparql', '1.0.3')

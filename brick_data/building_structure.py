@@ -11,7 +11,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 from geoalchemy2.shape import from_shape
 
-from .timeseries_interface.postgres_wrapper import PostgresInterface
+from .timeseries.postgres_wrapper import PostgresInterface
 
 class BuildingStructure(PostgresInterface):
 

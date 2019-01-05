@@ -6,7 +6,7 @@ import os.path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from brick_data.sparqlwrapper_brick import BrickEndpoint
-from brick_data.timeseries_interface import BrickTimeseries
+from brick_data.timeseries import BrickTimeseries
 from brick_data.building_structure import BuildingStructure
 
 base_ns = 'http://example.com/'

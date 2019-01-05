@@ -2,9 +2,9 @@ import pdb
 
 from .querysynthesizer import TimescaledbSynthesizer, BrickSynthesizer
 
-from ..timeseries_interface import BrickTimeseries
+from ..timeseries import BrickTimeseries
 from ..building_structure import BuildingStructure
-from ..sparqlwrapper_brick import BrickEndpoint
+from ..sparql import BrickEndpoint
 from ..common import TS_DB, BRICK_DB, STRUCT_DB
 
 """

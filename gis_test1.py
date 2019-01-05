@@ -1,8 +1,8 @@
 import pdb
 
-from brick_data.timeseries_interface import BrickTimeseries
+from brick_data.timeseries import BrickTimeseries
 from brick_data.building_structure import BuildingStructure
-from brick_data.sparqlwrapper_brick import BrickEndpoint
+from brick_data.sparql import BrickEndpoint
 from brick_data.queryprocessor.queryprocessor import QueryProcessor
 from brick_data.queryprocessor.querysynthesizer import *
 from brick_data.common import TS_DB, BRICK_DB, STRUCT_DB
