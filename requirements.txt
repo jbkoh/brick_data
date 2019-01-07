@@ -1,0 +1,8 @@
+pandas
+shapely
+psycopg2
+sqlalchemy
+geoalchemy2
+rdflib
+SPARQLWrapper
+moz_sql_parser
