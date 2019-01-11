@@ -5,9 +5,9 @@ import pdb
 import random
 
 from brick_data.timeseries import *
-from brick_data.sparqlwrapper_brick import BrickEndpoint
+from brick_data.sparql import BrickSparql
 
-brick_db = BrickEndpoint('http://localhost:8890/sparql', '1.0.3')
+brick_db = BrickSparql('http://localhost:8890/sparql', '1.0.3')
 ts_db = SqlalchemyTimeseries(
     dbname = 'brick',
     user = 'bricker',
@@ -54,9 +54,9 @@ def gen_random_metadata(num_rooms, brick_db):
         room = 'room_{0}'.format(room_num)
         znt = 'znt_{0}'.format(room_num)
         cc = 'cc_{0}'.format(room_num)
-        brick_db.add_instance(room, 'Room')
-        brick_db.add_instance(znt, 'Zone_Temperature_Sensor')
-        brick_db.add_instance(cc, 'Cooling_Command')
+        brick_db.add_brick_instance(room, 'Room')
+        brick_db.add_brick_instance(znt, 'Zone_Temperature_Sensor')
+        brick_db.add_brick_instance(cc, 'Cooling_Command')
 
 if __name__ == '__main__':
     brick_db.load_schema()
@@ -66,5 +66,3 @@ if __name__ == '__main__':
     data = gen_random_data('Zone_Temperature_Sensor', begin_time, end_time, 'znt1')
     ts_db.add_data(data)
 
-
-    proc = QueryProcessor

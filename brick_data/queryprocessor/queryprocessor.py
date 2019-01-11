@@ -78,7 +78,10 @@ class QueryProcessor(object):
             queries = synth.synthesize_query(pseudo_query, common_vars, common_results)
             for db_query in queries: #TODO: currently assuming one query produced
                 res = db.raw_query(db_query)
-                common_res, raw_res = db.parse_result(res)
+                try:
+                    common_res, raw_res = db.parse_result(res)
+                except:
+                    pdb.set_trace()
             found_vars = tuple(common_res[0])
             common_results[found_vars] = common_res[1]
             raw_results.append(raw_res)

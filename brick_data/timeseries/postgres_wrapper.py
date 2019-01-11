@@ -64,7 +64,6 @@ class BrickTimeseries(object):
             'value': values,
             'loc': locs
         })
-        pdb.set_trace()
         print(df)
 
     def get_all_data(self, query=''):
@@ -80,7 +79,15 @@ class BrickTimeseries(object):
     def _exec_query(self, qstr):
         cur = self._get_cursor()
         cur.execute(qstr)
-        raw_res = cur.fetchall()
+        query_type = cur.statusmessage.split()[0]
+        if query_type =='SELECT':
+            raw_res = cur.fetchall()
+        elif query_type == 'DELETE':
+            raw_res = None
+        elif query_type == 'INSERT':
+            raw_res = None
+        else:
+            raise Exception('not implemented yet')
         return raw_res
 
     def _timestamp2str(self, ts):
@@ -89,21 +96,37 @@ class BrickTimeseries(object):
     def raw_query(self, qstr):
         raw_res = self._exec_query(qstr)
         res = self._format_select_res(raw_res)
-        pdb.set_trace()
         return res
 
-    def query(self, begin_time=None, end_time=None, uuids=[]):
-        pdb.set_trace()
+    def delete(self, start_time=None, end_time=None, uuids=[]):
+        assert uuids, 'Any UUIDs should be given for deleting timeseries data'
+        qstr = """
+        DELETE FROM {0}
+        WHERE
+        """.format(self.TABLE_NAME)
+        qstr += "uuid IN ({0})\n AND "\
+            .format("'" + "', '".join(uuids) + "'")
+        if start_time:
+            qstr += "time >= '{0}'\n AND "\
+                .format(self._timestamp2str(start_time))
+        if end_time:
+            qstr += "time < '{0}'\n AND "\
+                .format(self._timestamp2str(end_time))
+        qstr = qstr[:-4]
+        res = self.raw_query(qstr)
+        self.conn.commit()
+
+    def query(self, start_time=None, end_time=None, uuids=[]):
         qstr = """
         SELECT uuid, time, value, ST_AsGeoJson(loc) FROM {0}
         """.format(self.TABLE_NAME)
-        if not (begin_time or end_time or uuids):
+        if not (start_time or end_time or uuids):
             qstr += 'DUMY' # dummy characters to be removed.
         else:
             qstr += 'WHERE\n'
-            if begin_time:
+            if start_time:
                 qstr += "time >= '{0}'\n AND "\
-                    .format(self._timestamp2str(begin_time))
+                    .format(self._timestamp2str(start_time))
             if end_time:
                 qstr += "time < '{0}'\n AND "\
                     .format(self._timestamp2str(end_time))
@@ -111,8 +134,7 @@ class BrickTimeseries(object):
                 qstr += "uuid IN ({0})\n AND "\
                     .format("'" + "', '".join(uuids) + "'")
         qstr = qstr[:-4]
-        raw_res = self._exec_query(qstr)
-        res = self._format_select_res(raw_res)
+        res = self.raw_query(qstr)
         return res
 
 

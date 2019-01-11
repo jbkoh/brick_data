@@ -6,3 +6,4 @@ geoalchemy2
 rdflib
 SPARQLWrapper
 moz_sql_parser
+git+git@github.com:jbkoh/brick_data.git

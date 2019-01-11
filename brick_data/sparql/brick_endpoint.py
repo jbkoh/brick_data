@@ -10,7 +10,7 @@ from copy import deepcopy
 import pdb
 
 
-class BrickEndpoint(object):
+class BrickSparql(object):
 
     def __init__(self, sparql_url, brick_version, base_ns=''):
         self.BRICK_VERSION = brick_version
@@ -23,7 +23,7 @@ class BrickEndpoint(object):
         if not base_ns:
             base_ns = 'http://example.com/'
         self.BASE = Namespace(base_ns)
-        self.base_graph = base_ns[:-1]
+        self.base_graph = base_ns.strip('/').strip('#').strip(':')
         self.sparql.addDefaultGraph(self.base_graph)
         self.BRICK = Namespace(
             'https://brickschema.org/schema/{0}/Brick#'\
