@@ -43,6 +43,31 @@ class BrickTimeseries(object):
             "password='{pw}' user='{user}'".format(user=user, pw=pw)
         self.conn = psycopg2.connect(conn_str)
         #self.cur = self.conn.cursor()
+        self._init_table()
+
+    def _init_table(self):
+        qstrs = [
+            """
+            CREATE TABLE IF NOT EXISTS brick_data (
+                uuid TEXT NOT NULL,
+                time TIMESTAMP NOT NULL,
+                value DOUBLE PRECISION,
+                PRIMARY KEY (uuid, time)
+            );
+            """,
+
+            """
+            CREATE INDEX  brick_data_time_index ON brick_data
+            (
+                time DESC
+            );
+            """
+        ]
+        for qstr in qstrs:
+            cur = self._get_cursor()
+            res = cur.execute(qstr)
+            self.conn.commit()
+        print('init table')
 
     def _get_cursor(self):
         return self.conn.cursor()
