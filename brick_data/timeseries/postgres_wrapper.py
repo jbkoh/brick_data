@@ -35,7 +35,8 @@ class PostgresInterface(object):
 
 
 class BrickTimeseries(object):
-    def __init__(self, dbname, user, pw, host, port=5601):
+    def __init__(self, dbname, user, pw, host, port=5601, use_postgis=True):
+        self._use_postgis = use_postgis
         self.DB_NAME = dbname
         self.TABLE_NAME = 'brick_data'
         conn_str = "dbname='{dbname}' host='{host}' port='{port}' " \
@@ -52,12 +53,13 @@ class BrickTimeseries(object):
                 uuid TEXT NOT NULL,
                 time TIMESTAMP NOT NULL,
                 value DOUBLE PRECISION,
+                {0}
                 PRIMARY KEY (uuid, time)
             );
-            """,
+            """.format('loc geometry(Point,4326),' if self._use_postgis else ''),
 
             """
-            CREATE INDEX  brick_data_time_index ON brick_data
+            CREATE INDEX IF NOT EXISTS brick_data_time_index ON brick_data
             (
                 time DESC
             );
@@ -78,7 +80,11 @@ class BrickTimeseries(object):
         values = []
         locs = []
         for row in res:
-            [uuid, t, value, loc] = row
+            if self._use_postgis:
+                [uuid, t, value, loc] = row
+            else:
+                [uuid, t, value] = row
+                loc = None
             times.append(t)
             uuids.append(uuid)
             values.append(value)
