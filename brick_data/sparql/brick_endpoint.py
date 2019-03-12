@@ -1,3 +1,8 @@
+from shutil import copyfile
+import pdb
+from copy import deepcopy
+import os
+
 import rdflib
 from rdflib import RDFS, RDF, OWL, Namespace
 from rdflib.namespace import FOAF
@@ -5,9 +10,10 @@ from SPARQLWrapper import SPARQLWrapper
 from SPARQLWrapper import JSON, SELECT, INSERT, DIGEST, GET, POST
 from rdflib import URIRef, Literal
 
-from copy import deepcopy
+import validators
 
-import pdb
+from jasonhelper import striding_window
+from .common import VIRTUOSO
 
 
 class BrickSparql(object):
@@ -65,6 +71,10 @@ class BrickSparql(object):
 
         if load_schema:
             self._load_schema()
+        self.backend = VIRTUOSO
+
+        if self.backend == VIRTUOSO:
+            self.data_dir = '/datadrive/synergy/tools/virtuoso/share/virtuoso/vad'
 
     def _get_sparql(self):
         # If need to optimize accessing sparql object.
@@ -202,6 +212,22 @@ class BrickSparql(object):
             qstr = load_query_template.format(
                 schema_url.replace('https', 'http'), self.base_graph)
             res = self.update(qstr)
+
+    def load_rdffile(self, f):
+        if isinstance(f, str):
+            if validators.url(f):
+                pass
+            elif os.path.isfile(f):
+                # TODO: Optimize this with using Virtuoso API directly
+                new_g = rdflib.Graph()
+                new_g.parse(f, format='turtle')
+                res = new_g.query('select ?s ?p ?o where {?s ?p ?o.}')
+                for row in res:
+                    self.add_triple(*row)
+            else:
+                raise Exception('Load ttl not implemented for {0}'.format(type(f)))
+        else:
+            raise Exception('Load ttl not implemented for {0}'.format(type(f)))
 
 
 if __name__ == '__main__':
