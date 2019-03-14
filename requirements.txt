@@ -7,4 +7,4 @@ rdflib
 SPARQLWrapper
 moz_sql_parser
 validators
-git+https://github.com/jbkoh/jason_python_helper.git@bd28d6ba0916da296d40397fa9eba4e49c0d3487
+jasonhelper==0.0.1
