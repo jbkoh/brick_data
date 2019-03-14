@@ -7,4 +7,4 @@ rdflib
 SPARQLWrapper
 moz_sql_parser
 validators
-jasonhelper==0.0.1
+jasonhelper
