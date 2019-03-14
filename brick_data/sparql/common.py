@@ -1,0 +1,3 @@
+# CONSTANTS
+
+VIRTUOSO = 'virtuoso'
