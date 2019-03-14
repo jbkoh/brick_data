@@ -5,6 +5,8 @@ __author__ = 'Jason Koh'
 __version__ = '0.0.1'
 
 install_reqs = parse_requirements(open('requirements.txt'))
+#with open('requirements.txt') as fp:
+#        install_requires = fp.read()
 reqs = [ir.name for ir in install_reqs]
 
 setup(
@@ -13,5 +15,7 @@ setup(
     packages = find_packages(),
     description = 'A wrapper of Timeseries DBs',
     install_requires = reqs,
+    dependency_links=['http://github.com/jbkoh/jason_python_helper/tarball/master#egg=jasonhelper-0.0.1']
+    #install_requires=install_requires
 )
 
