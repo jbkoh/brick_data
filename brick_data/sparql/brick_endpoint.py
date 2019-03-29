@@ -12,7 +12,6 @@ from rdflib import URIRef, Literal
 
 import validators
 
-from jasonhelper import striding_window
 from .common import VIRTUOSO
 
 
