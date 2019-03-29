@@ -15,7 +15,6 @@ setup(
     packages = find_packages(),
     description = 'A wrapper of Timeseries DBs',
     install_requires = reqs,
-    dependency_links=['http://github.com/jbkoh/jason_python_helper/tarball/master#egg=jasonhelper-0.0.1']
     #install_requires=install_requires
 )
 
