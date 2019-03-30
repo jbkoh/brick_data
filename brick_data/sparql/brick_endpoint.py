@@ -2,6 +2,8 @@ from shutil import copyfile
 import pdb
 from copy import deepcopy
 import os
+import arrow
+from io import StringIO
 
 import rdflib
 from rdflib import RDFS, RDF, OWL, Namespace
@@ -13,6 +15,12 @@ from rdflib import URIRef, Literal
 import validators
 
 from .common import VIRTUOSO
+
+def striding_windows(l, w_size):
+    curr_idx = 0
+    while curr_idx < len(l):
+        yield l[curr_idx:curr_idx + w_size]
+        curr_idx += w_size
 
 
 class BrickSparql(object):
@@ -117,11 +125,13 @@ class BrickSparql(object):
             res = raw_res # TODO: Error handling here
         return res
 
-    def _create_insert_query(self, triples):
+    def _create_insert_query(self, triples, graph=None):
+        if not graph:
+            graph = self.base_graph
         q = """
             INSERT DATA {{
                 GRAPH <{0}> {{
-            """.format(self.base_graph)
+            """.format(graph)
         for triple in triples:
             triple_str = ' '.join([term.n3() for term in triple]) + ' .\n'
             q += triple_str
@@ -175,33 +185,22 @@ class BrickSparql(object):
             node = Literal(term)
         return node
 
-    def add_triple(self, pseudo_s, pseudo_p, pseudo_o):
-        triple = self.make_triple(pseudo_s, pseudo_p, pseudo_o)
-        self.add_triples([triple])
-
-    def make_triple(self, pseudo_s, pseudo_p, pseudo_o):
+    def make_triple(self, pseudo_s, pseudo_p, pseudo_o, graph=None):
+        if not graph:
+            graph = self.base_graph
         s = self._parse_term(pseudo_s)
         p = self._parse_term(pseudo_p)
         o = self._parse_term(pseudo_o)
         return (s, p, o)
 
 
-    def add_triples(self, pseudo_triples):
+    def add_triples(self, pseudo_triples, graph=None):
+        if not graph:
+            graph = self.base_graph
         triples = [self.make_triple(*pseudo_triple)
                    for pseudo_triple in pseudo_triples]
-        self._add_triples(triples)
-
-    def _add_triples(self, triples):
-        q = self._create_insert_query(triples)
+        q = self._create_insert_query(triples, graph)
         res = self.update(q)
-
-
-    def add_brick_instance(self, entity_id, tagset):
-        entity = URIRef(self.BASE + entity_id)
-        tagset = URIRef(self.BRICK + tagset)
-        triples = [(entity, RDF.type, tagset)]
-        self._add_triples(triples)
-        return str(entity)
 
     def _load_schema(self):
         schema_urls = [str(ns)[:-1] + '.ttl' for ns in
@@ -212,19 +211,18 @@ class BrickSparql(object):
                 schema_url.replace('https', 'http'), self.base_graph)
             res = self.update(qstr)
 
-    def load_rdffile(self, f):
-        if isinstance(f, str):
-            if validators.url(f):
-                pass
-            elif os.path.isfile(f):
-                # TODO: Optimize this with using Virtuoso API directly
-                new_g = rdflib.Graph()
-                new_g.parse(f, format='turtle')
-                res = new_g.query('select ?s ?p ?o where {?s ?p ?o.}')
-                for row in res:
-                    self.add_triple(*row)
-            else:
-                raise Exception('Load ttl not implemented for {0}'.format(type(f)))
+    def load_rdffile(self, f, graph=''):
+        if not graph:
+            graph = self.base_graph
+        if (isinstance(f, str) and os.path.isfile(f)) or isinstance(f, StringIO):
+            # TODO: Optimize this with using Virtuoso API directly
+            new_g = rdflib.Graph()
+            new_g.parse(f, format='turtle')
+            res = [row for row in new_g.query('select ?s ?p ?o where {?s ?p ?o.}')]
+            for rows in striding_windows(res, 500):
+                self.add_triples(rows)
+        elif isinstance(f, str) and validators.url(f):
+            raise Exception('Load ttl not implemented for {0}'.format('url'))
         else:
             raise Exception('Load ttl not implemented for {0}'.format(type(f)))
 
