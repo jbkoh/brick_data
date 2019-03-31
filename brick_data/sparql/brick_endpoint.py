@@ -9,7 +9,8 @@ import rdflib
 from rdflib import RDFS, RDF, OWL, Namespace
 from rdflib.namespace import FOAF
 from SPARQLWrapper import SPARQLWrapper
-from SPARQLWrapper import JSON, SELECT, INSERT, DIGEST, GET, POST
+from SPARQLWrapper import JSON, SELECT, INSERT, DIGEST, GET, POST, DELETE
+LOAD = 'LOAD'
 from rdflib import URIRef, Literal
 
 import validators
@@ -22,10 +23,9 @@ def striding_windows(l, w_size):
         yield l[curr_idx:curr_idx + w_size]
         curr_idx += w_size
 
-
 class BrickSparql(object):
 
-    def __init__(self, sparql_url, brick_version, base_ns='', load_schema=False):
+    def __init__(self, sparql_url, brick_version, graph, base_ns, load_schema=False):
         self.BRICK_VERSION = brick_version
         self.sparql_url = sparql_url
         self.sparql = SPARQLWrapper(endpoint=self.sparql_url,
@@ -33,10 +33,8 @@ class BrickSparql(object):
         self.sparql.queryType= SELECT
         self.sparql.setCredentials('dba', 'dba')
         self.sparql.setHTTPAuth(DIGEST)
-        if not base_ns:
-            base_ns = 'http://example.com/'
         self.BASE = Namespace(base_ns)
-        self.base_graph = base_ns.strip('/').strip('#').strip(':')
+        self.base_graph = graph
         self.sparql.addDefaultGraph(self.base_graph)
         self.BRICK = Namespace(
             'https://brickschema.org/schema/{0}/Brick#'\
@@ -87,9 +85,6 @@ class BrickSparql(object):
         # If need to optimize accessing sparql object.
         return self.sparql
 
-    def update(self, qstr):
-        return self.query(qstr, is_update=True)
-
     def _format_select_res(self, raw_res):
         var_names = raw_res['head']['vars']
         tuples = [[row[var_name]['value'] for var_name in var_names]
@@ -106,22 +101,17 @@ class BrickSparql(object):
         common_res = res
         return common_res, raw_res
 
-    def query(self, qstr, is_update=False):
+    def query(self, qstr):
         sparql = self._get_sparql()
-        if is_update:
-            sparql.setMethod(POST)
-        else:
-            sparql.setMethod(GET)
+        sparql.setMethod(POST)
         sparql.setReturnFormat(JSON)
         qstr = self.q_prefix + qstr
-        sparql.setHTTPAuth
+        #sparql.setHTTPAuth
         sparql.setQuery(qstr)
         raw_res = sparql.query().convert()
         if sparql.queryType == SELECT:
             res = self._format_select_res(raw_res)
-        elif sparql.queryType == INSERT:
-            res = raw_res # TODO: Error handling here
-        elif sparql.queryType == 'LOAD':
+        elif sparql.queryType in [INSERT, LOAD, DELETE]:
             res = raw_res # TODO: Error handling here
         return res
 
@@ -193,6 +183,9 @@ class BrickSparql(object):
         o = self._parse_term(pseudo_o)
         return (s, p, o)
 
+    def add_triple(self, pseudo_s, pseudo_p, pseudo_o, graph=None):
+        self.add_triples([(pseudo_s, pseudo_p, pseudo_o)], graph)
+
 
     def add_triples(self, pseudo_triples, graph=None):
         if not graph:
@@ -200,7 +193,7 @@ class BrickSparql(object):
         triples = [self.make_triple(*pseudo_triple)
                    for pseudo_triple in pseudo_triples]
         q = self._create_insert_query(triples, graph)
-        res = self.update(q)
+        res = self.query(q)
 
     def _load_schema(self):
         schema_urls = [str(ns)[:-1] + '.ttl' for ns in
@@ -209,7 +202,7 @@ class BrickSparql(object):
         for schema_url in schema_urls:
             qstr = load_query_template.format(
                 schema_url.replace('https', 'http'), self.base_graph)
-            res = self.update(qstr)
+            res = self.query(qstr)
 
     def load_rdffile(self, f, graph=''):
         if not graph:
@@ -225,6 +218,13 @@ class BrickSparql(object):
             raise Exception('Load ttl not implemented for {0}'.format('url'))
         else:
             raise Exception('Load ttl not implemented for {0}'.format(type(f)))
+
+    def add_brick_instance(self, entity_id, tagset):
+        entity = URIRef(self.BASE + entity_id)
+        tagset = URIRef(self.BRICK + tagset)
+        triples = [(entity, RDF.type, tagset)]
+        self.add_triples(triples)
+        return str(entity)
 
 
 if __name__ == '__main__':
