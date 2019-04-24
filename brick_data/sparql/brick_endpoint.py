@@ -4,6 +4,7 @@ from copy import deepcopy
 import os
 import arrow
 from io import StringIO
+import re
 
 import rdflib
 from rdflib import RDFS, RDF, OWL, Namespace
@@ -61,9 +62,17 @@ class BrickSparql(object):
             'owl': OWL,
             'foaf': FOAF
         }
-        #self.q_prefix = '\n'.join([
-        #    'prefix {0}: {1}'.format(prefix, ns.uri.n3()) for prefix, ns
-        #    in self.namespaces.items()]) + '\n'
+
+        self.init_q_prefix()
+
+        if load_schema:
+            self._load_schema()
+        self.backend = VIRTUOSO
+
+        if self.backend == VIRTUOSO:
+            self.data_dir = '/datadrive/synergy/tools/virtuoso/share/virtuoso/vad'
+
+    def init_q_prefix(self):
         self.q_prefix = ''
         for prefix, ns in self.namespaces.items():
             if 'uri' in dir(ns):
@@ -73,13 +82,6 @@ class BrickSparql(object):
 
             self.q_prefix += 'prefix {0}: {1}\n'.format(prefix, ns_n3)
         self.q_prefix += '\n'
-
-        if load_schema:
-            self._load_schema()
-        self.backend = VIRTUOSO
-
-        if self.backend == VIRTUOSO:
-            self.data_dir = '/datadrive/synergy/tools/virtuoso/share/virtuoso/vad'
 
     def _get_sparql(self):
         # If need to optimize accessing sparql object.
@@ -101,12 +103,22 @@ class BrickSparql(object):
         common_res = res
         return common_res, raw_res
 
-    def query(self, qstr):
+    def add_graphs_to_qstr(self, qstr, graphs=[]):
+        if not graphs:
+            return qstr
+        [prefix, body] = re.split(re.compile('where', re.IGNORECASE), qstr)
+        graph_body = '\n'
+        for graph in graphs:
+            graph_body += 'FROM <{0}>\n'.format(graph)
+        return prefix + graph_body + 'where ' + body
+
+    def query(self, qstr, graphs=[], is_update=False):
         sparql = self._get_sparql()
         sparql.setMethod(POST)
         sparql.setReturnFormat(JSON)
         qstr = self.q_prefix + qstr
-        #sparql.setHTTPAuth
+        if not is_update:
+            qstr = self.add_graphs_to_qstr(qstr, graphs)
         sparql.setQuery(qstr)
         raw_res = sparql.query().convert()
         if sparql.queryType == SELECT:
@@ -150,7 +162,7 @@ class BrickSparql(object):
         try:
             float(s)
             return True
-        except:
+        except ValueError:
             return False
 
     def _parse_term(self, term):
@@ -175,6 +187,11 @@ class BrickSparql(object):
             node = Literal(term)
         return node
 
+    def add_ns_prefix(self, ns, prefix):
+        ns = Namespace(ns)
+        self.namespaces[prefix] = ns
+        self.init_q_prefix()
+
     def make_triple(self, pseudo_s, pseudo_p, pseudo_o, graph=None):
         if not graph:
             graph = self.base_graph
@@ -193,7 +210,7 @@ class BrickSparql(object):
         triples = [self.make_triple(*pseudo_triple)
                    for pseudo_triple in pseudo_triples]
         q = self._create_insert_query(triples, graph)
-        res = self.query(q)
+        res = self.query(q, is_update=True)
 
     def _load_schema(self):
         schema_urls = [str(ns)[:-1] + '.ttl' for ns in
@@ -219,9 +236,13 @@ class BrickSparql(object):
         else:
             raise Exception('Load ttl not implemented for {0}'.format(type(f)))
 
-    def add_brick_instance(self, entity_id, tagset):
-        entity = URIRef(self.BASE + entity_id)
-        tagset = URIRef(self.BRICK + tagset)
+    def add_brick_instance(self, entity_id, tagset, ns_prefix=None):
+        if ns_prefix:
+            ns = self.namespaces[ns_prefix]
+        else:
+            ns = self.BASE
+        entity = ns[entity_id]
+        tagset = self.BRICK[tagset]
         triples = [(entity, RDF.type, tagset)]
         self.add_triples(triples)
         return str(entity)
