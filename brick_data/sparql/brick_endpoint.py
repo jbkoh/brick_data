@@ -115,12 +115,13 @@ class BrickSparql(object):
             graph_body += 'FROM <{0}>\n'.format(graph)
         return prefix + graph_body + 'where ' + body
 
-    def add_graphs_to_insert_qstr_dep(self, qstr, graphs=[]):
+    def add_graphs_to_insert_qstr(self, qstr, graphs=[]):
         if graphs:
             graph = graphs[0]
         else:
             graph = self.base_graph
         qstr = 'WITH <{0}>\n'.format(graph) + qstr
+        return qstr
 
     def add_graphs_to_insert_qstr_dep(self, qstr, graphs=[]):
         assert len(graphs) <= 1, 'Cannot insert into multiple graphs. Choose a graph or no graph'
