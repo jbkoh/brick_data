@@ -50,6 +50,8 @@ class BrickSparql(object):
             'https://brickschema.org/schema/{0}/BrickTag#'\
             .format(self.BRICK_VERSION))
 
+        PROV = Namespace('http://www.w3.org/ns/prov#')
+
         self.namespaces = {
             '': self.BASE,
             'base': self.BASE,
@@ -60,7 +62,8 @@ class BrickSparql(object):
             'rdfs': RDFS,
             'rdf': RDF,
             'owl': OWL,
-            'foaf': FOAF
+            'foaf': FOAF,
+            'prov': PROV,
         }
 
         self.init_q_prefix()
@@ -103,7 +106,7 @@ class BrickSparql(object):
         common_res = res
         return common_res, raw_res
 
-    def add_graphs_to_qstr(self, qstr, graphs=[]):
+    def add_graphs_to_select_qstr(self, qstr, graphs=[]):
         if not graphs:
             return qstr
         [prefix, body] = re.split(re.compile('where', re.IGNORECASE), qstr)
@@ -112,13 +115,54 @@ class BrickSparql(object):
             graph_body += 'FROM <{0}>\n'.format(graph)
         return prefix + graph_body + 'where ' + body
 
+    def add_graphs_to_insert_qstr_dep(self, qstr, graphs=[]):
+        if graphs:
+            graph = graphs[0]
+        else:
+            graph = self.base_graph
+        qstr = 'WITH <{0}>\n'.format(graph) + qstr
+
+    def add_graphs_to_insert_qstr_dep(self, qstr, graphs=[]):
+        assert len(graphs) <= 1, 'Cannot insert into multiple graphs. Choose a graph or no graph'
+        #if not graphs:
+        #    return qstr
+        if graphs:
+            graph = graphs[0]
+        else:
+            graph = self.base_graph
+        [graph_prefix, body] = re.split(re.compile('insert{', re.IGNORECASE), qstr)
+        graph_prefix += 'INSERT{\n'
+        graph_prefix += 'GRAPH <{0}> {{'.format(graph)
+        splitted_body = re.split('}', body)
+        insert_body = splitted_body[0]
+        augmented_qstr = graph_prefix + insert_body + '  }\n}' + '}'.join(splitted_body[1:])
+        return augmented_qstr
+
+    def update(self, qstr, graphs=[]):
+        sparql = self._get_sparql()
+        sparql.setMethod(POST)
+        sparql.setReturnFormat(JSON)
+        query_type = qstr[:6]
+        if query_type.upper() == 'INSERT':
+            qstr = self.add_graphs_to_insert_qstr(qstr, graphs)
+        elif graphs:
+            raise Exception('not implemented yet')
+        qstr = self.q_prefix + qstr
+        sparql.setQuery(qstr)
+        raw_res = sparql.query().convert()
+        if sparql.queryType == SELECT:
+            res = self._format_select_res(raw_res)
+        elif sparql.queryType in [INSERT, LOAD, DELETE]:
+            res = raw_res # TODO: Error handling here
+        return res
+
     def query(self, qstr, graphs=[], is_update=False):
         sparql = self._get_sparql()
         sparql.setMethod(POST)
         sparql.setReturnFormat(JSON)
         qstr = self.q_prefix + qstr
         if not is_update:
-            qstr = self.add_graphs_to_qstr(qstr, graphs)
+            qstr = self.add_graphs_to_select_qstr(qstr, graphs)
         sparql.setQuery(qstr)
         raw_res = sparql.query().convert()
         if sparql.queryType == SELECT:
@@ -132,6 +176,21 @@ class BrickSparql(object):
             graph = self.base_graph
         q = """
             INSERT DATA {{
+                GRAPH <{0}> {{
+            """.format(graph)
+        for triple in triples:
+            triple_str = ' '.join([term.n3() for term in triple]) + ' .\n'
+            q += triple_str
+        q += """}
+            }
+            """
+        return q
+
+    def _create_delete_query(self, triples, graph=None):
+        if not graph:
+            graph = self.base_graph
+        q = """
+            DELETE DATA {{
                 GRAPH <{0}> {{
             """.format(graph)
         for triple in triples:
@@ -166,7 +225,7 @@ class BrickSparql(object):
             return False
 
     def _parse_term(self, term):
-        if isinstance(term, URIRef) or isinstance(term, Literal):
+        if isinstance(term, rdflib.term.Identifier):
             return term
         elif isinstance(term, str):
             if 'http' == term[0:4]:
@@ -203,13 +262,21 @@ class BrickSparql(object):
     def add_triple(self, pseudo_s, pseudo_p, pseudo_o, graph=None):
         self.add_triples([(pseudo_s, pseudo_p, pseudo_o)], graph)
 
-
     def add_triples(self, pseudo_triples, graph=None):
         if not graph:
             graph = self.base_graph
-        triples = [self.make_triple(*pseudo_triple)
-                   for pseudo_triple in pseudo_triples]
+        triples = [self.make_triple(*pseudo_triple) for pseudo_triple in pseudo_triples]
         q = self._create_insert_query(triples, graph)
+        res = self.query(q, is_update=True)
+
+    def delete_triple(self, pseudo_s, pseudo_p, pseudo_o, graph=None):
+        self.delete_triples([(pseudo_s, pseudo_p, pseudo_o)], graph)
+
+    def delete_triples(self, pseudo_triples, graph=None):
+        if not graph:
+            graph = self.base_graph
+        triples = [self.make_triple(*pseudo_triple) for pseudo_triple in pseudo_triples]
+        q = self._create_delete_query(triples, graph)
         res = self.query(q, is_update=True)
 
     def _load_schema(self):
@@ -221,7 +288,7 @@ class BrickSparql(object):
                 schema_url.replace('https', 'http'), self.base_graph)
             res = self.query(qstr)
 
-    def load_rdffile(self, f, graph=''):
+    def load_rdffile(self, f, graph=None):
         if not graph:
             graph = self.base_graph
         if (isinstance(f, str) and os.path.isfile(f)) or isinstance(f, StringIO):
@@ -236,16 +303,19 @@ class BrickSparql(object):
         else:
             raise Exception('Load ttl not implemented for {0}'.format(type(f)))
 
-    def add_brick_instance(self, entity_id, tagset, ns_prefix=None):
-        if ns_prefix:
-            ns = self.namespaces[ns_prefix]
+    def add_brick_instance(self, entity_id, tagset, ns_prefix=None, graph=None):
+        if not isinstance(entity_id, URIRef):
+            if ns_prefix:
+                ns = self.namespaces[ns_prefix]
+                entity = ns[entity_id]
+            else:
+                entity = URIRef(entity_id)
         else:
-            ns = self.BASE
-        entity = ns[entity_id]
+            entity = entity_id
         tagset = self.BRICK[tagset]
         triples = [(entity, RDF.type, tagset)]
-        self.add_triples(triples)
-        return str(entity)
+        self.add_triples(triples, graph)
+        return entity
 
 
 if __name__ == '__main__':
