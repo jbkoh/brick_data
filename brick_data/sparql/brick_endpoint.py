@@ -6,6 +6,7 @@ import arrow
 from io import StringIO
 import re
 
+import semver
 import rdflib
 from rdflib import RDFS, RDF, OWL, Namespace
 from rdflib.namespace import FOAF
@@ -281,8 +282,12 @@ class BrickSparql(object):
         res = self.query(q, is_update=True)
 
     def _load_schema(self):
-        schema_urls = [str(ns)[:-1] + '.ttl' for ns in
-                       [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]]
+        parsed_brick_version = semver.parse(self.BRICK_VERSION)
+        if parsed_brick_version['major'] <= 1 and parsed_brick_version['minor'] < 1:
+            schema_ns = [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]
+        else:
+            schema_ns = [self.BRICK]
+        schema_urls = [str(ns)[:-1] + '.ttl' for ns in schema_ns]
         load_query_template = 'LOAD <{0}> into <{1}>'
         for schema_url in schema_urls:
             qstr = load_query_template.format(
