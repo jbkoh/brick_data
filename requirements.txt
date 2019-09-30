@@ -7,3 +7,4 @@ rdflib
 SPARQLWrapper
 moz_sql_parser
 validators
+semver
