@@ -50,7 +50,7 @@ select exists (
       brick_data.uuid = '?person_loc' AND
       brick_data.time >= '2018-05-05 20:47:37' AND
       brick_data.time < '2018-05-05 20:59:53' AND
-      building_geometry.uri='?room_geom' AND
+      building_geometry.uri='?room_geom_uri' AND #TODO: Check if this is correct.
       ST_Within(brick_data.loc, building_geometry.geom)
 );
 """

@@ -52,7 +52,8 @@ class BrickTimeseries(object):
             CREATE TABLE IF NOT EXISTS brick_data (
                 uuid TEXT NOT NULL,
                 time TIMESTAMP NOT NULL,
-                value DOUBLE PRECISION,
+                number DOUBLE PRECISION,
+                text TEXT,
                 {0}
                 PRIMARY KEY (uuid, time)
             );
