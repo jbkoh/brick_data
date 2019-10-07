@@ -7,8 +7,6 @@ from shapely import wkb
 import psycopg2
 from psycopg2.extras import execute_values
 from geoalchemy2.shape import from_shape
-#from postgis.psycopg import register
-#from postgis import Point
 
 class PostgresInterface(object):
     def __init__(self, dbname, table_name, user, pw, host, port=5601):
@@ -35,8 +33,7 @@ class PostgresInterface(object):
 
 
 class BrickTimeseries(object):
-    def __init__(self, dbname, user, pw, host, port=5601, use_postgis=True):
-        self._use_postgis = use_postgis
+    def __init__(self, dbname, user, pw, host, port=5601):
         self.DB_NAME = dbname
         self.TABLE_NAME = 'brick_data'
         conn_str = "dbname='{dbname}' host='{host}' port='{port}' " \
@@ -45,6 +42,7 @@ class BrickTimeseries(object):
         self.conn = psycopg2.connect(conn_str)
         #self.cur = self.conn.cursor()
         self._init_table()
+        self.value_cols = ['number', 'text', 'loc']
 
     def _init_table(self):
         qstrs = [
@@ -54,10 +52,10 @@ class BrickTimeseries(object):
                 time TIMESTAMP NOT NULL,
                 number DOUBLE PRECISION,
                 text TEXT,
-                {0}
+                loc geometry(Point,4326),
                 PRIMARY KEY (uuid, time)
             );
-            """.format('loc geometry(Point,4326),' if self._use_postgis else ''),
+            """,
 
             """
             CREATE INDEX IF NOT EXISTS brick_data_time_index ON brick_data
@@ -78,29 +76,27 @@ class BrickTimeseries(object):
     def display_data(self, res):
         times = []
         uuids = []
-        values = []
+        numbers = []
+        texts = []
         locs = []
         for row in res:
-            if self._use_postgis:
-                [uuid, t, value, loc] = row
-            else:
-                [uuid, t, value] = row
-                loc = None
+            [uuid, t, number, text, loc] = row
             times.append(t)
             uuids.append(uuid)
-            values.append(value)
+            numbers.append(number)
+            texts.append(test)
             locs.append(loc)
         df = pd.DataFrame({
             'time': times,
             'uuid': uuids,
-            'value': values,
+            'number': numbers,
             'loc': locs
         })
         print(df)
 
     def get_all_data(self, query=''):
         cur = self._get_cursor()
-        cur.execute("""SELECT uuid, time, value, ST_AsGeoJson(loc) FROM {0}""".format(self.TABLE_NAME))
+        cur.execute("""SELECT uuid, time, number, text, ST_AsGeoJson(loc) FROM {0}""".format(self.TABLE_NAME))
         res = cur.fetchall()
         return res
 
@@ -150,7 +146,7 @@ class BrickTimeseries(object):
 
     def query(self, start_time=None, end_time=None, uuids=[]):
         qstr = """
-        SELECT uuid, time, value, ST_AsGeoJson(loc) FROM {0}
+        SELECT uuid, time, number, text, ST_AsGeoJson(loc) FROM {0}
         """.format(self.TABLE_NAME)
         if not (start_time or end_time or uuids):
             qstr += 'DUMY' # dummy characters to be removed.
@@ -169,10 +165,17 @@ class BrickTimeseries(object):
         res = self.raw_query(qstr)
         return res
 
+    # TODO: Unify encode & add_data over different data types.
 
-    def _encode_value_data(self, data):
+
+    def _encode_number_data(self, data):
         return [(datum[0], self._timestamp2str(datum[1]), datum[2])
                 for datum in data]
+
+    def _encode_text_data(self, data):
+        return [(datum[0], self._timestamp2str(datum[1]), str(datum[2]))
+                for datum in data]
+
 
     def _encode_loc_data(self, data):
         data = [(datum[0],
@@ -181,15 +184,27 @@ class BrickTimeseries(object):
                  ) for datum in data]
         return data
 
-    def _add_value_data(self, data):
+    def _add_number_data(self, data):
         cur = self._get_cursor()
         sql = """
-              INSERT INTO {0}(uuid, time, value)
+              INSERT INTO {0}(uuid, time, number)
               VALUES %s
 
-              ON CONFLICT (time, uuid) DO UPDATE SET value = excluded.value;
+              ON CONFLICT (time, uuid) DO UPDATE SET number = excluded.number;
               """.format(self.TABLE_NAME)
-        encoded_data = self._encode_value_data(data)
+        encoded_data = self._encode_number_data(data)
+        execute_values(cur, sql, encoded_data)
+        self.conn.commit()
+
+    def _add_text_data(self, data):
+        cur = self._get_cursor()
+        sql = """
+              INSERT INTO {0}(uuid, time, text)
+              VALUES %s
+
+              ON CONFLICT (time, uuid) DO UPDATE SET text = excluded.text;
+              """.format(self.TABLE_NAME)
+        encoded_data = self._encode_text_data(data)
         execute_values(cur, sql, encoded_data)
         self.conn.commit()
 
@@ -221,20 +236,22 @@ class BrickTimeseries(object):
                          })
         self.conn.commit()
 
-    def add_data(self, data, data_type='value'):
+    def add_data(self, data, data_type='number'):
         """
         - input
             - uuid (str): a unique id of one sensor
             - data (list(tuple)): timeseries data. E.g., [(1055151, 70.0), 1055153, 70.1)]
         """
-        assert data_type in ['value', 'loc'] # TODO: Make these ENUM.
+        assert data_type in self.value_cols # TODO: Make these ENUM.
 
         if not data:
             raise Exception('Empty data to insert')
-        if data_type == 'value':
-            self._add_value_data(data)
+        if data_type == 'number':
+            self._add_number_data(data)
         elif data_type == 'loc':
             self._add_loc_data(data)
+        elif data_type == 'text':
+            self._add_text_data(data)
 
 if __name__ == '__main__':
     dbname = 'brick'
