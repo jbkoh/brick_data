@@ -303,7 +303,7 @@ class BrickSparql(object):
             new_g.parse(f, format='turtle')
             res = [row for row in new_g.query('select ?s ?p ?o where {?s ?p ?o.}')]
             for rows in striding_windows(res, 500):
-                self.add_triples(rows)
+                self.add_triples(rows, graph=graph)
         elif isinstance(f, str) and validators.url(f):
             raise Exception('Load ttl not implemented for {0}'.format('url'))
         else:
