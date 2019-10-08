@@ -158,6 +158,9 @@ class BrickSparql(object):
             res = raw_res # TODO: Error handling here
         return res
 
+    def raw_query(self, qstr):
+        return self.query(qstr)  # TODO: How to handle different graphs?
+
     def query(self, qstr, graphs=[], is_update=False):
         sparql = self._get_sparql()
         sparql.setMethod(POST)
