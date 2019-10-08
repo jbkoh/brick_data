@@ -4,7 +4,7 @@ from .querysynthesizer import TimescaledbSynthesizer, BrickSynthesizer
 
 from ..timeseries import BrickTimeseries
 from ..building_structure import BuildingStructure
-from ..sparql import BrickEndpoint
+from ..sparql import BrickSparql
 from ..common import TS_DB, BRICK_DB, STRUCT_DB
 
 """
