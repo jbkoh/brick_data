@@ -67,24 +67,45 @@ class QueryProcessor(object):
         return new_qstr
 
     def query(self, query):
-        common_vars = query['common_variables']
+        common_vars_list = list(map(tuple, query['common_variables']))
+        assert len(common_vars_list) == len(query['queries'])
+        # NOTE: common_vars_list bridges between queriesi and the last common_var is the final output of the query.
+        #       Thus, there should be (N) common_vars_list where N is the number of queries.
         pseudo_queries = query['queries']
-        common_results = {common_var: [] for common_var in common_vars}
-        raw_results = []
-        results = []
-        for db_name, pseudo_query in pseudo_queries:
+        tot_results = []
+        for i, (db_name, pseudo_query) in enumerate(pseudo_queries):
+            if i == 0:
+                curr_common_vars = []
+                curr_vars = []
+                curr_results = ['init']
+                #common_results = {common_var: [] for common_var in curr_common_vars}
+            else:
+                curr_common_vars = common_vars_list[i-1]
+            next_common_vars = common_vars_list[i]
             db = self.dbs[db_name]
             synth = self.synthesizers[db_name] # TODO: merge this into the db
-            queries = synth.synthesize_query(pseudo_query, common_vars, common_results)
-            for db_query in queries: #TODO: currently assuming one query produced
-                res = db.raw_query(db_query)
-                try:
-                    common_res, raw_res = db.parse_result(res)
-                except:
-                    pdb.set_trace()
-            found_vars = tuple(common_res[0])
-            common_results[found_vars] = common_res[1]
-            raw_results.append(raw_res)
+            queries = synth.synthesize_query(pseudo_query, curr_common_vars, curr_vars, curr_results)
+            prev_results = curr_results
+            curr_results = []
+            # TODO: Start from here. Filter out "res" from brickdb based on "next_curr_vars" and accumulate.
+            #       That should be fed back into the timeseries database.
+            for db_query, prev_res in zip(queries, prev_results):
+                res = db.raw_query(db_query, return_type='sparql-like')
+                tuples = res['tuples']
+                if prev_res == 'init':
+                    curr_vars = res['var_names']
+                    curr_results += res['tuples']
+                else:
+                    if res['tuples']:
+                        curr_results.append(prev_res)
+            tot_results.append(curr_results)
+            #common_results[found_vars] = common_res[1]
+        var_idxs = [curr_vars.index(var) for var in next_common_vars]
+        final_result = {
+            'var_names': next_common_vars,
+            'tuples': [[row[var_idx] for var_idx in var_idxs] for row in curr_results]
+        }
+        return final_result
 
     def plan_query_dep(self, query):
         """

@@ -25,7 +25,7 @@ dbs = {
     STRUCT_DB: struct_db,
 }
 
-common_vars = (('?person_loc',), ('?room_geom',))
+common_vars = (('?person_loc',), ('?room_geom_uri',))
 
 person_query = """
 select ?person_loc where {

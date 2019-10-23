@@ -1,5 +1,6 @@
 import pdb
 from datetime import datetime
+import pytz
 import pandas as pd
 
 from shapely.geometry import LineString, Point
@@ -49,6 +50,7 @@ class BrickTimeseries(object):
             """
             CREATE TABLE IF NOT EXISTS brick_data (
                 uuid TEXT NOT NULL,
+                --time TIMESTAMP without time zone NOT NULL,
                 time TIMESTAMP NOT NULL,
                 number DOUBLE PRECISION,
                 text TEXT,
@@ -119,11 +121,23 @@ class BrickTimeseries(object):
         return raw_res
 
     def _timestamp2str(self, ts):
+        #return datetime.fromtimestamp(ts, tz=pytz.utc)
+        # TODO: Debug timezone
         return datetime.fromtimestamp(ts)
 
-    def raw_query(self, qstr):
+    def raw_query(self, qstr, return_type=None):
         raw_res = self._exec_query(qstr)
         res = self._format_select_res(raw_res)
+        if not return_type:
+            pass
+        elif return_type == 'sparql-like':
+            var_begin = qstr.lower().index('select') + 6
+            var_end = qstr.lower().index('from')
+            var_names = qstr[var_begin:var_end].split()
+            res = {
+                'var_names': var_names,
+                'tuples': res,
+            }
         return res
 
     def delete(self, start_time=None, end_time=None, uuids=[]):

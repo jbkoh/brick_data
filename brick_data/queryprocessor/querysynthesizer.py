@@ -14,7 +14,7 @@ class BrickSynthesizer(QuerySynthesizer):
     def __init__(self):
         super(BrickSynthesizer, self).__init__()
 
-    def synthesize_query(self, qstr, common_vars_set, common_values_set):
+    def synthesize_query(self, qstr, common_vars, curr_vars, curr_values):
         return [qstr]
 
 class TimescaledbSynthesizer(QuerySynthesizer):
@@ -54,39 +54,21 @@ class TimescaledbSynthesizer(QuerySynthesizer):
         return '\n'.join(lines)
 
 
-    def synthesize_query(self, qstr, common_vars_set, common_values_set):
+    def synthesize_query(self, qstr, common_vars, curr_vars, curr_values):
         """
-        Return: Synthesized queries to execute.
-        Notes
-        1. common_vars and common_values are synchronized.
-            I.e., they should be zippable.
-        2. Variables in common_vars_set should be unique.
-            I.e., A variable occurs once.
         """
-        found_vars = [var for var in reduce(adder, common_vars_set, ())
-                      if var in qstr]
-        var_locs = {var: i for i, var in enumerate(found_vars)}
-        value_template = [None] * len(var_locs)
+        common_var_idxs = [curr_vars.index(common_var) for common_var in common_vars]
+        #value_template = [None] * len(var_locs)
 
-        found_values_list = []
-        prev_found_values_list = [deepcopy(value_template)]
-        for common_vars, common_values \
-                in zip(common_vars_set, common_values_set):
-            for value_tuple in common_values:
-                for var, val in zip(common_vars, value_tuple):
-                    if var in found_vars:
-                        for prev_found_value in prev_found_values_list:
-                            updated_value = deepcopy(prev_found_value)
-                            updated_value[var_locs[var]] = val
-                            found_values_list.append(updated_value)
-            prev_found_values_list = found_values_list
-            found_values_list = []
-        found_values_list = prev_found_values_list
+        #found_values_list = []
+        #prev_found_values_list = [deepcopy(value_template)]
+        #for common_vars, common_values in zip(common_vars_set, common_values_set):
         res_qstrs = []
-        for found_values in found_values_list:
+        #for found_values in found_values_list:
+        for value_tuple in curr_values:
             q = qstr
-            for var, found_value in zip(found_vars, found_values):
-                q = q.replace(var, found_value)
+            for common_var_idx, common_var in zip(common_var_idxs, common_vars):
+                q = q.replace(common_var, value_tuple[common_var_idx])
             res_qstrs.append(q)
         return res_qstrs
 
