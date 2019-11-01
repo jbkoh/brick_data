@@ -90,7 +90,7 @@ class QueryProcessor(object):
             # TODO: Start from here. Filter out "res" from brickdb based on "next_curr_vars" and accumulate.
             #       That should be fed back into the timeseries database.
             for db_query, prev_res in zip(queries, prev_results):
-                res = db.raw_query(db_query, return_type='sparql-like')
+                res = db.raw_query(db_query)#, return_type='sparql-like')
                 tuples = res['tuples']
                 if prev_res == 'init':
                     curr_vars = res['var_names']
