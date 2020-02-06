@@ -7,13 +7,20 @@ import random
 from brick_data.timeseries import *
 from brick_data.sparql import BrickSparql
 
-brick_db = BrickSparql('http://localhost:8890/sparql', '1.0.3')
+brick_db = BrickSparql(sparql_url='http://localhost:8890/sparql',
+                       brick_version='1.0.3',
+                       graph='http://example.com',
+                       base_ns='http://example.com#',
+                       load_schema=True,
+                       username='dba',
+                       password='dba',
+                       )
 ts_db = SqlalchemyTimeseries(
-    dbname = 'brick',
-    user = 'bricker',
-    pw = 'brick-demo',
-    host = 'localhost',
-    port = 6001
+    dbname='brick',
+    user='bricker',
+    pw='brick-demo',
+    host='localhost',
+    port=6001
 )
 
 def gen_random_data(point_type, begin_time, end_time, srcid):
@@ -59,10 +66,9 @@ def gen_random_metadata(num_rooms, brick_db):
         brick_db.add_brick_instance(cc, 'Cooling_Command')
 
 if __name__ == '__main__':
-    brick_db.load_schema()
     gen_random_metadata(2, brick_db)
     begin_time = arrow.get(2018,4,1).timestamp
     end_time = arrow.get(2018,4,2).timestamp
     data = gen_random_data('Zone_Temperature_Sensor', begin_time, end_time, 'znt1')
-    ts_db.add_data(data)
+    #ts_db.add_data(data)
 

@@ -27,13 +27,22 @@ def striding_windows(l, w_size):
 
 class BrickSparql(object):
 
-    def __init__(self, sparql_url, brick_version, graph, base_ns, load_schema=False):
+    def __init__(
+        self,
+        sparql_url,
+        brick_version,
+        graph,
+        base_ns,
+        load_schema=False,
+        username='dba',
+        password='dba',
+    ):
         self.BRICK_VERSION = brick_version
         self.sparql_url = sparql_url
         self.sparql = SPARQLWrapper(endpoint=self.sparql_url,
                                     updateEndpoint=self.sparql_url + '-auth')
-        self.sparql.queryType= SELECT
-        self.sparql.setCredentials('dba', 'dba')
+        self.sparql.queryType = SELECT
+        self.sparql.setCredentials(username, password)
         self.sparql.setHTTPAuth(DIGEST)
         self.BASE = Namespace(base_ns)
         self.base_graph = graph
@@ -71,10 +80,6 @@ class BrickSparql(object):
 
         if load_schema:
             self._load_schema()
-        self.backend = VIRTUOSO
-
-        if self.backend == VIRTUOSO:
-            self.data_dir = '/datadrive/synergy/tools/virtuoso/share/virtuoso/vad'
 
     def init_q_prefix(self):
         self.q_prefix = ''
@@ -293,8 +298,7 @@ class BrickSparql(object):
         schema_urls = [str(ns)[:-1] + '.ttl' for ns in schema_ns]
         load_query_template = 'LOAD <{0}> into <{1}>'
         for schema_url in schema_urls:
-            qstr = load_query_template.format(
-                schema_url.replace('https', 'http'), self.base_graph)
+            qstr = load_query_template.format(schema_url.replace('https', 'http'), self.base_graph)
             res = self.query(qstr)
 
     def load_rdffile(self, f, graph=None):

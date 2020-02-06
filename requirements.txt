@@ -1,6 +1,6 @@
 pandas
 shapely
-psycopg2
+psycopg2-binary
 sqlalchemy
 geoalchemy2
 rdflib
