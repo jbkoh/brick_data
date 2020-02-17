@@ -5,7 +5,6 @@ import os
 import arrow
 from io import StringIO
 import re
-import asyncio
 
 import semver
 import rdflib
@@ -172,7 +171,7 @@ class BrickSparql(object):
         sparql.setMethod(POST)
         sparql.setReturnFormat(JSON)
         qstr = self.q_prefix + qstr
-        if not is_update:
+        if not is_update:  # TODO: Implement this for update as well.
             qstr = self.add_graphs_to_select_qstr(qstr, graphs)
         sparql.setQuery(qstr)
         raw_res = sparql.query().convert()
@@ -280,13 +279,6 @@ class BrickSparql(object):
         q = self._create_insert_query(triples, graph)
         res = self.query(q, is_update=True)
 
-    async def add_triples_async(self, pseudo_triples, graph=None):
-        if not graph:
-            graph = self.base_graph
-        triples = [self.make_triple(*pseudo_triple) for pseudo_triple in pseudo_triples]
-        q = self._create_insert_query(triples, graph)
-        res = self.query(q, is_update=True)
-
     def delete_triple(self, pseudo_s, pseudo_p, pseudo_o, graph=None):
         self.delete_triples([(pseudo_s, pseudo_p, pseudo_o)], graph)
 
@@ -309,25 +301,6 @@ class BrickSparql(object):
             qstr = load_query_template.format(schema_url.replace('https', 'http'), self.base_graph)
             res = self.query(qstr)
 
-    async def load_rdffile_async(self, f, graph=None):
-        if not graph:
-            graph = self.base_graph
-        if (isinstance(f, str) and os.path.isfile(f)) or isinstance(f, StringIO):
-            # TODO: Optimize this with using Virtuoso API directly
-            new_g = rdflib.Graph()
-            new_g.parse(f, format='turtle')
-            res = [row for row in new_g.query('select ?s ?p ?o where {?s ?p ?o.}')]
-            futures = []
-            for rows in striding_windows(res, 500):
-                #self.add_triples(rows, graph=graph)
-                futures.append(self.add_triples_async(rows, graph=graph))
-            asyncio.wait(futures)
-            #loop = asyncio.get_event_loop()
-            #loop.run_until_complete(asyncio.wait(futures))
-        elif isinstance(f, str) and validators.url(f):
-            raise Exception('Load ttl not implemented for {0}'.format('url'))
-        else:
-            raise Exception('Load ttl not implemented for {0}'.format(type(f)))
 
     def load_rdffile(self, f, graph=None):
         if not graph:
