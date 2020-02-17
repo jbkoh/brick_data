@@ -13,7 +13,7 @@ brick_db = BrickSparql(sparql_url='http://localhost:8890/sparql',
                        base_ns='http://example.com#',
                        load_schema=True,
                        username='dba',
-                       password='dba',
+                       password='testtt',
                        )
 ts_db = SqlalchemyTimeseries(
     dbname='brick',
@@ -70,5 +70,5 @@ if __name__ == '__main__':
     begin_time = arrow.get(2018,4,1).timestamp
     end_time = arrow.get(2018,4,2).timestamp
     data = gen_random_data('Zone_Temperature_Sensor', begin_time, end_time, 'znt1')
-    #ts_db.add_data(data)
+    ts_db.add_data(data)
 
