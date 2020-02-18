@@ -16,7 +16,7 @@ select ?s ?p ?o where {
 ?s ?p ?o.
 }
 """
-loop = asyncio.get_event_loop()
+loop = asyncio.get_running_loop()
 
 res = loop.run_until_complete(brick_endpoint.query(qstr))
 

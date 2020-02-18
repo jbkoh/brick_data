@@ -29,8 +29,18 @@ class BrickSparqlAsync(BrickSparql):
             futures.append(self.query(qstr, is_update=True))
             #loop.run_until_complete(self.query(qstr, is_update=True))
         #loop = asyncio.get_event_loop()
-        loop = asyncio.get_event_loop()
+        loop = self._get_event_loop()
         loop.run_until_complete(asyncio.gather(*futures))
+
+    def _get_event_loop(self):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError as e:
+            if str(e) == 'no running event loop':
+                loop = asyncio.get_event_loop()
+            else:
+                raise e
+        return loop
 
     async def query(self, qstr, graphs=[], is_update=False, is_insert=False, is_delete=False):
         if not graphs:
