@@ -1,10 +1,13 @@
 import aiosparql
 import asyncio
 import pdb
-import semver
 from aiosparql.client import SPARQLClient
+from io import StringIO
 
-from .brick_endpoint import BrickSparql
+import rdflib
+import semver
+
+from .brick_endpoint import BrickSparql, striding_windows
 
 
 class BrickSparqlAsync(BrickSparql):
@@ -62,4 +65,20 @@ class BrickSparqlAsync(BrickSparql):
         return res
 
     async def load_rdffile(self, f, graph=None):
-        super(BrickSparqlAsync, self).load_rdffile(f, graph)
+        if not graph:
+            graph = self.base_graph
+        if (isinstance(f, str) and os.path.isfile(f)) or isinstance(f, StringIO):
+            # TODO: Optimize this with using Virtuoso API directly
+            new_g = rdflib.Graph()
+            new_g.parse(f, format='turtle')
+            res = [row for row in new_g.query('select ?s ?p ?o where {?s ?p ?o.}')]
+            #futures = []
+            #for rows in striding_windows(res, 500):
+            #    self.add_triples(rows, graph=graph)
+            futures = [self.add_triples(rows, graph=graph) for rows in striding_windows(res, 500)]
+            await asyncio.gather(*futures)
+
+        elif isinstance(f, str) and validators.url(f):
+            raise Exception('Load ttl not implemented for {0}'.format('url'))
+        else:
+            raise Exception('Load ttl not implemented for {0}'.format(type(f)))

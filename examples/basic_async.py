@@ -1,4 +1,5 @@
 import asyncio
+from io import StringIO
 from asyncio import FIRST_COMPLETED, ALL_COMPLETED
 import pdb
 
@@ -10,7 +11,13 @@ brick_endpoint = BrickSparqlAsync('http://bd-testbed.ucsd.edu:8890/sparql',
                              base_ns='http://example.com#',
                              )
 loop = asyncio.get_event_loop()
-brick_endpoint.load_schema()
+
+
+with open('examples/bldg.ttl', 'r') as fp:
+    ttl_io = StringIO(fp.read())
+    res = loop.run_until_complete(brick_endpoint.load_rdffile(ttl_io))
+
+
 res = loop.run_until_complete(brick_endpoint.load_schema())
 
 qstr = """
