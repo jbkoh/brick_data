@@ -15,7 +15,7 @@ class BrickSparqlAsync(BrickSparql):
     def init_sparql(self, sparql_url):
         self.sparql = SPARQLClient(sparql_url)
 
-    def _load_schema(self):
+    async def load_schema(self):
         parsed_brick_version = semver.parse(self.BRICK_VERSION)
         if parsed_brick_version['major'] <= 1 and parsed_brick_version['minor'] < 1:
             schema_ns = [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]
@@ -27,20 +27,7 @@ class BrickSparqlAsync(BrickSparql):
         for schema_url in schema_urls:
             qstr = load_query_template.format(schema_url.replace('https', 'http'), self.base_graph)
             futures.append(self.query(qstr, is_update=True))
-            #loop.run_until_complete(self.query(qstr, is_update=True))
-        #loop = asyncio.get_event_loop()
-        loop = self._get_event_loop()
-        loop.run_until_complete(asyncio.gather(*futures))
-
-    def _get_event_loop(self):
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError as e:
-            if str(e) == 'no running event loop':
-                loop = asyncio.get_event_loop()
-            else:
-                raise e
-        return loop
+        await asyncio.gather(*futures)
 
     async def query(self, qstr, graphs=[], is_update=False, is_insert=False, is_delete=False):
         if not graphs:

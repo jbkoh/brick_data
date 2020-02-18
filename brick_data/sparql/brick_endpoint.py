@@ -33,7 +33,6 @@ class BrickSparql(object):
         brick_version,
         graph,
         base_ns,
-        load_schema=False,
         username='dba',
         password='dba',
     ):
@@ -73,8 +72,6 @@ class BrickSparql(object):
         self.init_q_prefix()
 
         self.init_sparql(self.sparql_url)
-        if load_schema:
-            self._load_schema()
 
     def init_sparql(self, sparql_url):
         self.sparql = SPARQLWrapper(endpoint=sparql_url, updateEndpoint=sparql_url + '-auth')
@@ -291,7 +288,7 @@ class BrickSparql(object):
         q = self._create_delete_query(triples, graph)
         res = self.query(q, is_update=True)
 
-    def _load_schema(self):
+    def load_schema(self):
         parsed_brick_version = semver.parse(self.BRICK_VERSION)
         if parsed_brick_version['major'] <= 1 and parsed_brick_version['minor'] < 1:
             schema_ns = [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]

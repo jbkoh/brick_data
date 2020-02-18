@@ -8,15 +8,16 @@ brick_endpoint = BrickSparqlAsync('http://bd-testbed.ucsd.edu:8890/sparql',
                              '1.0.3',
                              graph='http://example.com',
                              base_ns='http://example.com#',
-                             load_schema=True,
                              )
+loop = asyncio.get_event_loop()
+brick_endpoint.load_schema()
+res = loop.run_until_complete(brick_endpoint.load_schema())
 
 qstr = """
 select ?s ?p ?o where {
 ?s ?p ?o.
 }
 """
-loop = asyncio.get_running_loop()
 
 res = loop.run_until_complete(brick_endpoint.query(qstr))
 
