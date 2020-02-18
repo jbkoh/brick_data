@@ -39,14 +39,8 @@ class BrickSparql(object):
     ):
         self.BRICK_VERSION = brick_version
         self.sparql_url = sparql_url
-        self.sparql = SPARQLWrapper(endpoint=self.sparql_url,
-                                    updateEndpoint=self.sparql_url + '-auth')
-        self.sparql.queryType = SELECT
-        self.sparql.setCredentials(username, password)
-        self.sparql.setHTTPAuth(DIGEST)
         self.BASE = Namespace(base_ns)
         self.base_graph = graph
-        self.sparql.addDefaultGraph(self.base_graph)
         self.BRICK = Namespace(
             'https://brickschema.org/schema/{0}/Brick#'\
             .format(self.BRICK_VERSION))
@@ -78,8 +72,16 @@ class BrickSparql(object):
 
         self.init_q_prefix()
 
+        self.init_sparql(self.sparql_url)
         if load_schema:
             self._load_schema()
+
+    def init_sparql(self, sparql_url):
+        self.sparql = SPARQLWrapper(endpoint=sparql_url, updateEndpoint=sparql_url + '-auth')
+        self.sparql.addDefaultGraph(self.base_graph)
+        self.sparql.queryType = SELECT
+        self.sparql.setCredentials(username, password)
+        self.sparql.setHTTPAuth(DIGEST)
 
     def init_q_prefix(self):
         self.q_prefix = ''

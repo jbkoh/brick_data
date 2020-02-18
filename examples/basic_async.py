@@ -8,7 +8,7 @@ brick_endpoint = BrickSparqlAsync('http://bd-testbed.ucsd.edu:8890/sparql',
                              '1.0.3',
                              graph='http://example.com',
                              base_ns='http://example.com#',
-                             load_schema=False,
+                             load_schema=True,
                              )
 
 qstr = """
@@ -16,11 +16,9 @@ select ?s ?p ?o where {
 ?s ?p ?o.
 }
 """
-brick_endpoint.query(qstr)
-
-
 loop = asyncio.get_event_loop()
 
+res = loop.run_until_complete(brick_endpoint.query(qstr))
 
 tasks = []
 #tasks.append(brick_endpoint.query(qstr))
@@ -34,5 +32,4 @@ res = loop.run_until_complete(asyncio.gather(*tasks))
 
 
 loop.close()
-pdb.set_trace()
 
