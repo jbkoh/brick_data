@@ -19,13 +19,13 @@ class AsyncpgTimeseries(object):
     def __init__(self, dbname, user, pw, host, port=5601, pool_config={}):
         self.DB_NAME = dbname
         self.TABLE_NAME = 'brick_data'
-        conn_str = f'postgres://{user}:{pw}@{host}:{port}/{dbname}'
-        loop = asyncio.get_event_loop()
-        self.pool = loop.run_until_complete(asyncpg.create_pool(dsn=conn_str), **pool_config)
-
-        loop.run_until_complete(self._init_table())
+        self.conn_str = f'postgres://{user}:{pw}@{host}:{port}/{dbname}'
         self.value_cols = ['number', 'text', 'loc']
         self.pagination_size = 500
+
+    async def init(self, **pool_config):
+        self.pool = await asyncpg.create_pool(dsn=self.conn_str, **pool_config)
+        await self._init_table()
 
     async def _init_table(self):
         qstrs = [

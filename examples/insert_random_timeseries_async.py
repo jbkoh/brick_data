@@ -68,6 +68,7 @@ def gen_random_metadata(num_rooms, brick_db):
         brick_db.add_brick_instance(cc, 'Cooling_Command')
 
 async def main():
+    await ts_db.init()
     gen_random_metadata(2, brick_db)
     begin_time = arrow.get(2018,4,1).timestamp
     end_time = arrow.get(2018,4,2).timestamp

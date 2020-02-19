@@ -15,7 +15,7 @@ class BrickSparqlAsync(BrickSparql):
     def __init__(self, sparql_url, *args, **kwargs):
         super(BrickSparqlAsync, self).__init__(sparql_url, *args, **kwargs)
 
-    def init_sparql(self, sparql_url):
+    def init_sparql(self, sparql_url, *args, **kwargs):
         self.sparql = SPARQLClient(sparql_url)
 
     async def load_schema(self):
