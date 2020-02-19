@@ -71,9 +71,9 @@ class BrickSparql(object):
 
         self.init_q_prefix()
 
-        self.init_sparql(self.sparql_url)
+        self.init_sparql(self.sparql_url, username, password)
 
-    def init_sparql(self, sparql_url):
+    def init_sparql(self, sparql_url, username, password):
         self.sparql = SPARQLWrapper(endpoint=sparql_url, updateEndpoint=sparql_url + '-auth')
         self.sparql.addDefaultGraph(self.base_graph)
         self.sparql.queryType = SELECT
