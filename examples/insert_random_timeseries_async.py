@@ -76,11 +76,11 @@ async def main():
     await ts_db.add_data(data)
     res = await ts_db.get_all_data()
     assert res
-    queried = await ts_db.query(begin_time + 1000, end_time - 1000)
+    queried = await ts_db.query(start_time=begin_time + 1000, end_time=end_time - 1000)
     assert queried
     deleted = await ts_db.delete(['znt1'], begin_time - 1000, end_time + 1000)
     assert int(deleted.split()[-1])
-    query_after_del = await ts_db.query(begin_time + 1000, end_time - 1000)
+    query_after_del = await ts_db.query(start_time=begin_time + 1000, end_time=end_time - 1000)
     assert not query_after_del
     return queried, deleted
 

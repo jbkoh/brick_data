@@ -7,6 +7,13 @@ import pandas as pd
 from shapely.geometry import Point
 import asyncpg
 
+POSTGRESQL_LOC = 'ST_AsGeoJson(loc)'
+
+def encode_loc_type(value_type):
+    if value_type == 'loc':
+        return POSTGRESQL_LOC
+    else:
+        return value_type
 
 def striding_windows(l, w_size):
     curr_idx = 0
@@ -26,6 +33,7 @@ class AsyncpgTimeseries(object):
     async def init(self, **pool_config):
         self.pool = await asyncpg.create_pool(dsn=self.conn_str, **pool_config)
         await self._init_table()
+        print('Timeseries Initialized')
 
     async def _init_table(self):
         qstrs = [
@@ -74,12 +82,15 @@ class AsyncpgTimeseries(object):
         })
         print(df)
 
+    def serialize_records(self, records):
+        return [tuple(row) for row in records]
+
     async def get_all_data(self, query=''):
-        return [tuple(row) for row
-                in await self._fetch("""
-                                         SELECT uuid, time, number, text, ST_AsGeoJson(loc)
-                                         FROM {0}""".format(self.TABLE_NAME))
-                ]
+        return await self._fetch("""
+                                 SELECT uuid, time, number, text, ST_AsGeoJson(loc)
+                                 FROM {0}
+                                 """.format(self.TABLE_NAME)
+                                 )
 
     def _format_select_res(self, res, return_type=None):
         if not return_type:
@@ -96,7 +107,7 @@ class AsyncpgTimeseries(object):
 
     async def _fetch(self, qstr, *args, **kwargs):
         async with self.pool.acquire() as conn:
-            return await conn.fetch(qstr, *args, **kwargs)
+            return self.serialize_records(await conn.fetch(qstr, *args, **kwargs))
 
     async def _execute(self, qstr, *args, **kwargs):
         async with self.pool.acquire() as conn:
@@ -143,10 +154,18 @@ class AsyncpgTimeseries(object):
         res = await self._execute(qstr)
         return res
 
-    async def query(self, start_time=None, end_time=None, uuids=[]):
+
+    def encode_value_types(self, value_types):
+        return list(map(encode_loc_type, value_types))
+
+    async def query(self, uuids=[], start_time=None, end_time=None, value_types=['number']):
+        #qstr = """
+        #SELECT uuid, time, number, text, ST_AsGeoJson(loc) FROM {0}
+        #""".format(self.TABLE_NAME)
+        assert value_types
         qstr = """
-        SELECT uuid, time, number, text, ST_AsGeoJson(loc) FROM {0}
-        """.format(self.TABLE_NAME)
+        SELECT uuid, time, {value_types} FROM {table}
+        """.format(value_types=', '.join(value_types), table=self.TABLE_NAME)
         if not (start_time or end_time or uuids):
             qstr += 'DUMY' # dummy characters to be removed.
         else:
@@ -161,8 +180,7 @@ class AsyncpgTimeseries(object):
                 qstr += "uuid IN ({0})\n AND "\
                     .format("'" + "', '".join(uuids) + "'")
         qstr = qstr[:-4]
-        res = await self._fetch(qstr)
-        return res
+        return await self._fetch(qstr)
 
     # TODO: Unify encode & add_data over different data types.
 
