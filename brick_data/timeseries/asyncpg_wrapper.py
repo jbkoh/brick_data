@@ -2,6 +2,7 @@ from datetime import datetime
 import pdb
 import asyncio
 import pytz
+import aiofiles
 
 import pandas as pd
 from shapely.geometry import Point
@@ -23,12 +24,28 @@ def striding_windows(l, w_size):
 
 
 class AsyncpgTimeseries(object):
-    def __init__(self, dbname, user, pw, host, port=5601, pool_config={}):
+    def __init__(self,
+                 dbname,
+                 user,
+                 pw,
+                 host,
+                 port=5601,
+                 pool_config={},
+                 read_blob_configs={'dir': './blobs'},
+                 read_blob=None,
+                 write_blob=None,
+                 ):
         self.DB_NAME = dbname
         self.TABLE_NAME = 'brick_data'
         self.conn_str = f'postgres://{user}:{pw}@{host}:{port}/{dbname}'
         self.value_cols = ['number', 'text', 'loc']
         self.pagination_size = 500
+
+        self.read_blob_configs = read_blob_configs
+        if not read_blob:
+            self.read_blob = self.read_blob_fs
+        if not write_blob:
+            self.write_blob = self.write_blob_fs
 
     async def init(self, **pool_config):
         self.pool = await asyncpg.create_pool(dsn=self.conn_str, **pool_config)
@@ -60,6 +77,15 @@ class AsyncpgTimeseries(object):
             for qstr in qstrs:
                 res = await conn.execute(qstr)
         print('init table')
+
+    async def read_blob_fs(self, pointer):
+        async with aiofiles.open(self.read_blob_configs['dir'] + '/' + pointer, mode='rb') as f:
+            contents = await f.read()
+        return contents
+
+    async def write_blob_fs(self, data, pointer):
+        async with aiofiles.open(self.read_blob_configs['dir'] + '/' + pointer, mode='wb') as f:
+            await f.write(data)
 
     def display_data(self, res):
         times = []

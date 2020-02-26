@@ -48,7 +48,6 @@ class BrickSparqlAsync(BrickSparql):
             res = await self.sparql.update(qstr)
         else:
             res = await self.sparql.query(qstr)
-            #res = self._format_select_res(res)
         return res
 
 

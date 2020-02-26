@@ -10,3 +10,4 @@ validators
 semver
 aiosparql
 asyncpg
+aiofiles
