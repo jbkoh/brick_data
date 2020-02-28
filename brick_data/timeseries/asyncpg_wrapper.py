@@ -273,9 +273,9 @@ class AsyncpgTimeseries(object):
         if data_type == 'number':
             await self._add_number_data(data)
         elif data_type == 'loc':
-            self._add_loc_data(data)
+            await self._add_loc_data(data)
         elif data_type == 'text':
-            self._add_text_data(data)
+            await self._add_text_data(data)
 
 
 if __name__ == '__main__':
