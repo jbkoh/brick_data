@@ -55,7 +55,7 @@ class AsyncpgTimeseries(object):
     async def _init_table(self):
         qstrs = [
             """
-            CREATE TABLE IF NOT EXISTS brick_data (
+            CREATE TABLE IF NOT EXISTS {table_name} (
                 uuid TEXT NOT NULL,
                 --time TIMESTAMP without time zone NOT NULL,
                 time TIMESTAMP NOT NULL,
@@ -64,14 +64,14 @@ class AsyncpgTimeseries(object):
                 loc geometry(Point,4326),
                 PRIMARY KEY (uuid, time)
             );
-            """,
+            """.format(table_name=self.table_name),
 
             """
-            CREATE INDEX IF NOT EXISTS brick_data_time_index ON brick_data
+            CREATE INDEX IF NOT EXISTS brick_data_time_index ON {table_name}
             (
                 time DESC
             );
-            """
+            """.format(self.TABLE_NAME)
         ]
         async with self.pool.acquire() as conn:
             for qstr in qstrs:
@@ -158,8 +158,9 @@ class AsyncpgTimeseries(object):
         return datetime.fromtimestamp(ts)
 
     async def raw_query(self, qstr, return_type=None):
-        raw_res = self._exec_query(qstr)
-        res = self._format_select_res(raw_res, return_type)
+        #raw_res = self._exec_query(qstr)
+        #res = self._format_select_res(raw_res, return_type)
+        res = await self._fetch(qstr)
         return res
 
     async def delete(self, uuids, start_time=None, end_time=None):
