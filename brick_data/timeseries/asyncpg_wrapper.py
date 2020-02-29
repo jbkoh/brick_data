@@ -71,7 +71,7 @@ class AsyncpgTimeseries(object):
             (
                 time DESC
             );
-            """.format(self.TABLE_NAME)
+            """.format(table_name=self.TABLE_NAME)
         ]
         async with self.pool.acquire() as conn:
             for qstr in qstrs:
