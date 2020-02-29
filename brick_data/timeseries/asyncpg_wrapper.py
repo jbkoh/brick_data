@@ -64,7 +64,7 @@ class AsyncpgTimeseries(object):
                 loc geometry(Point,4326),
                 PRIMARY KEY (uuid, time)
             );
-            """.format(table_name=self.table_name),
+            """.format(table_name=self.TABLE_NAME),
 
             """
             CREATE INDEX IF NOT EXISTS brick_data_time_index ON {table_name}
