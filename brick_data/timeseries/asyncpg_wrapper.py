@@ -1,5 +1,5 @@
 from datetime import datetime
-import pdb
+from pdb import set_trace as bp
 import asyncio
 import pytz
 import aiofiles
@@ -40,6 +40,7 @@ class AsyncpgTimeseries(object):
         self.conn_str = f'postgres://{user}:{pw}@{host}:{port}/{dbname}'
         self.value_cols = ['number', 'text', 'loc']
         self.pagination_size = 500
+        self.temp_table = '_data'
 
         self.read_blob_configs = read_blob_configs
         if not read_blob:
@@ -53,6 +54,12 @@ class AsyncpgTimeseries(object):
         print('Timeseries Initialized')
 
     async def _init_table(self):
+        self.column_type_map = {
+            'time': 'TIMESTAMP',
+            'number': 'DOUBLE PRECISION',
+            'text': 'TEXT',
+            'loc': 'geometry(Point,4326)',
+        }
         qstrs = [
             """
             CREATE TABLE IF NOT EXISTS {table_name} (
@@ -226,40 +233,35 @@ class AsyncpgTimeseries(object):
         return data
 
     async def _add_number_data(self, data):
-        sql = """
-              INSERT INTO {0}(uuid, time, number)
-              VALUES ($1, $2, $3)
-
-              ON CONFLICT (time, uuid) DO UPDATE SET number = excluded.number;
-              """.format(self.TABLE_NAME)
         encoded_data = self._encode_number_data(data)
-        await self._paginate_executemany(sql, encoded_data)
+        res = await self._bulk_upsert_data(encoded_data, 'number')
 
     async def _add_text_data(self, data):
-        sql = """
-              INSERT INTO {0}(uuid, time, text)
-              VALUES ($1, $2, $3)
-
-              ON CONFLICT (time, uuid) DO UPDATE SET text = excluded.text;
-              """.format(self.TABLE_NAME)
         encoded_data = self._encode_text_data(data)
-        await self._paginate_executemany(sql, encoded_data)
-
-    async def _paginate_executemany(self, sql, encoded_data):
-        async with self.pool.acquire() as conn:
-            for data_window in striding_windows(encoded_data, self.pagination_size):
-                await conn.executemany(sql, data_window)
-
+        res = await self._bulk_upsert_data(encoded_data, 'text')
 
     async def _add_loc_data(self, data):
-        cur = self._get_cursor()
-        sql = """
-              INSERT INTO {0}(uuid, time, loc)
-              VALUES %s
-              ON CONFLICT (time, uuid) DO UPDATE SET loc = excluded.loc;
-              """.format(self.TABLE_NAME)
         encoded_data = self._encode_loc_data(data)
-        self._execute(sql, encoded_data)
+        res = await self._bulk_upsert_data(encoded_data, 'text')
+
+    async def _bulk_upsert_data(self, data, col_name):
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+CREATE TEMPORARY TABLE {temp_table} (
+uuid TEXT, time TIMESTAMP, {col_name} {data_type})
+            """.format(col_name=col_name,
+                       temp_table=self.temp_table,
+                       data_type=self.column_type_map[col_name]
+                       ))
+            await conn.copy_records_to_table('_data', records=data)
+            res = await conn.execute("""
+INSERT INTO {target_table} (uuid, time, {col_name})
+SELECT * FROM {temp_table}
+ON CONFLICT (time, uuid)
+DO UPDATE SET {col_name}=EXCLUDED.{col_name}
+WHERE {target_table}.{col_name} <> EXCLUDED.{col_name}
+            """.format(target_table=self.TABLE_NAME, temp_table=self.temp_table, col_name=col_name)
+                                     )
 
     async def add_data(self, data, data_type='number'):
         """

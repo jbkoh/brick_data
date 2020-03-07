@@ -11,7 +11,7 @@ brick_db = BrickSparql(sparql_url='http://localhost:8890/sparql',
                        brick_version='1.0.3',
                        graph='http://example.com',
                        base_ns='http://example.com#',
-                       load_schema=True,
+                       #load_schema=True,
                        username='dba',
                        password='testtt',
                        )
@@ -20,7 +20,7 @@ ts_db = SqlalchemyTimeseries(
     user='bricker',
     pw='brick-demo',
     host='localhost',
-    port=6001
+    port=5432
 )
 
 def gen_random_data(point_type, begin_time, end_time, srcid):

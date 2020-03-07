@@ -205,7 +205,8 @@ class BrickTimeseries(object):
               INSERT INTO {0}(uuid, time, number)
               VALUES %s
 
-              ON CONFLICT (time, uuid) DO UPDATE SET number = excluded.number;
+              ON CONFLICT (time, uuid)
+              DO UPDATE SET number = excluded.number;
               """.format(self.TABLE_NAME)
         encoded_data = self._encode_number_data(data)
         execute_values(cur, sql, encoded_data)
