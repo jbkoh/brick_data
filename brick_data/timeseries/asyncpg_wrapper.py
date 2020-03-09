@@ -3,6 +3,7 @@ from pdb import set_trace as bp
 import asyncio
 import pytz
 import aiofiles
+from uuid import uuid4 as gen_uuid()
 
 import pandas as pd
 from shapely.geometry import Point
@@ -40,7 +41,6 @@ class AsyncpgTimeseries(object):
         self.conn_str = f'postgres://{user}:{pw}@{host}:{port}/{dbname}'
         self.value_cols = ['number', 'text', 'loc']
         self.pagination_size = 500
-        self.temp_table = '_data'
 
         self.read_blob_configs = read_blob_configs
         if not read_blob:
@@ -245,22 +245,25 @@ class AsyncpgTimeseries(object):
         res = await self._bulk_upsert_data(encoded_data, 'text')
 
     async def _bulk_upsert_data(self, data, col_name):
+        temp_table = '_data'
+        #temp_table = '_temp_{0}'.format(gen_uuid())
         async with self.pool.acquire() as conn:
             await conn.execute("""
 CREATE TEMPORARY TABLE {temp_table} (
 uuid TEXT, time TIMESTAMP, {col_name} {data_type})
             """.format(col_name=col_name,
-                       temp_table=self.temp_table,
+                       temp_table=temp_table,
                        data_type=self.column_type_map[col_name]
                        ))
-            await conn.copy_records_to_table('_data', records=data)
+            await conn.copy_records_to_table(temp_table, records=data)
             res = await conn.execute("""
 INSERT INTO {target_table} (uuid, time, {col_name})
 SELECT * FROM {temp_table}
 ON CONFLICT (time, uuid)
 DO UPDATE SET {col_name}=EXCLUDED.{col_name}
-WHERE {target_table}.{col_name} <> EXCLUDED.{col_name}
-            """.format(target_table=self.TABLE_NAME, temp_table=self.temp_table, col_name=col_name)
+WHERE {target_table}.{col_name} <> EXCLUDED.{col_name};
+DROP TABLE {temp_table};
+            """.format(target_table=self.TABLE_NAME, temp_table=temp_table, col_name=col_name)
                                      )
 
     async def add_data(self, data, data_type='number'):
