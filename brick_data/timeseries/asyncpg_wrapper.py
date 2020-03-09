@@ -245,7 +245,7 @@ class AsyncpgTimeseries(object):
         res = await self._bulk_upsert_data(encoded_data, 'text')
 
     async def _bulk_upsert_data(self, data, col_name):
-        temp_table = '_temp_{0}'.format(gen_uuid())
+        temp_table = '_temp_{0}'.format(gen_uuid().hex)
         async with self.pool.acquire() as conn:
             await conn.execute("""
 CREATE TEMPORARY TABLE {temp_table} (
