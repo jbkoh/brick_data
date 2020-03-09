@@ -3,7 +3,7 @@ from pdb import set_trace as bp
 import asyncio
 import pytz
 import aiofiles
-from uuid import uuid4 as gen_uuid()
+from uuid import uuid4 as gen_uuid
 
 import pandas as pd
 from shapely.geometry import Point
