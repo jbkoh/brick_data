@@ -73,7 +73,7 @@ class BrickSparql(object):
 
         self.init_q_prefix()
 
-        self.init_sparql(self.sparql_url, username, password, self.update_url)
+        self.init_sparql(self.sparql_url, username, password)
 
     def init_sparql(self, sparql_url, username, password):
         if not self.update_url:
