@@ -1,5 +1,6 @@
 import aiosparql
 import asyncio
+import time
 import pdb
 from aiosparql.client import SPARQLClient
 from io import StringIO
@@ -45,9 +46,19 @@ class BrickSparqlAsync(BrickSparql):
             qstr = self.add_graphs_to_select_qstr(qstr, graphs)
 
         if is_update:
-            res = await self.sparql.update(qstr)
+            try:
+                res = await self.sparql.update(qstr)
+            except:
+                time.sleep(0.2)
+                res = await self.sparql.update(qstr)
         else:
-            res = await self.sparql.query(qstr)
+            try:
+                res = await self.sparql.query(qstr)
+            except:
+                time.sleep(0.2)
+                res = await self.sparql.query(qstr)
+
+
         return res
 
 
