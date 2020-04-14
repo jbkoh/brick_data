@@ -11,3 +11,4 @@ semver
 aiosparql
 asyncpg
 aiofiles
+arrow

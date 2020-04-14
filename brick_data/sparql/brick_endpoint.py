@@ -35,9 +35,11 @@ class BrickSparql(object):
         base_ns,
         username='dba',
         password='dba',
+        update_url=None,
     ):
         self.BRICK_VERSION = brick_version
         self.sparql_url = sparql_url
+        self.update_url = update_url
         self.BASE = Namespace(base_ns)
         self.base_graph = graph
         self.BRICK = Namespace(
@@ -71,10 +73,14 @@ class BrickSparql(object):
 
         self.init_q_prefix()
 
-        self.init_sparql(self.sparql_url, username, password)
+        self.init_sparql(self.sparql_url, username, password, self.update_url)
 
     def init_sparql(self, sparql_url, username, password):
-        self.sparql = SPARQLWrapper(endpoint=sparql_url, updateEndpoint=sparql_url + '-auth')
+        if not self.update_url:
+            update_url = sparql_url + '-auth'
+        else:
+            update_url = self.update_url
+        self.sparql = SPARQLWrapper(endpoint=sparql_url, updateEndpoint=update_url)
         self.sparql.addDefaultGraph(self.base_graph)
         self.sparql.queryType = SELECT
         self.sparql.setCredentials(username, password)
