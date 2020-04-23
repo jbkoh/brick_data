@@ -34,7 +34,7 @@ class BrickSparqlAsync(BrickSparql):
         await asyncio.gather(*futures)
 
     async def query(self, qstr, graphs=[], is_update=False, is_insert=False, is_delete=False):
-        if not graphs:
+        if not graphs and self.base_graph:
             graphs = [self.base_graph]
         if is_insert or is_delete:
             assert is_update
