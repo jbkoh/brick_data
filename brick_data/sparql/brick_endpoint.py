@@ -191,16 +191,15 @@ class BrickSparql(object):
     def _create_insert_query(self, triples, graph=None):
         if not graph:
             graph = self.base_graph
-        q = """
-            INSERT DATA {{
-                GRAPH <{0}> {{
-            """.format(graph)
+        q = 'INSERT DATA {\n'
+        if graph:
+            q += '  GRAPH <{0}> {{'.format(graph)
         for triple in triples:
             triple_str = ' '.join([term.n3() for term in triple]) + ' .\n'
             q += triple_str
-        q += """}
-            }
-            """
+        q += '}\n'
+        if graph:
+            q += '}'
         return q
 
     def _create_delete_query(self, triples, graph=None):
