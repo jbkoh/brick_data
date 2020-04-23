@@ -303,9 +303,11 @@ class BrickSparql(object):
         else:
             schema_ns = [self.BRICK]
         schema_urls = [str(ns)[:-1] + '.ttl' for ns in schema_ns]
-        load_query_template = 'LOAD <{0}> into <{1}>'
+        load_query_template = 'LOAD <{schema_url}>'
+        if self.base_graph:
+            load_query_template += ' into <{0}>'.format(self.base_graph)
         for schema_url in schema_urls:
-            qstr = load_query_template.format(schema_url.replace('https', 'http'), self.base_graph)
+            qstr = load_query_template.format(schema_url=schema_url.replace('https', 'http'))
             res = self.query(qstr)
 
 
