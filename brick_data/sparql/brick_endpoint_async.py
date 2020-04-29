@@ -6,9 +6,9 @@ from aiosparql.client import SPARQLClient
 from io import StringIO
 
 import rdflib
-import semver
 
 from .brick_endpoint import BrickSparql, striding_windows
+from .common import semver_compare
 
 
 class BrickSparqlAsync(BrickSparql):
@@ -21,7 +21,7 @@ class BrickSparqlAsync(BrickSparql):
 
     async def load_schema(self):
         parsed_brick_version = semver.parse(self.BRICK_VERSION)
-        if parsed_brick_version['major'] <= 1 and parsed_brick_version['minor'] < 1:
+        if semver_copmare(self.BRICK_VERSION, '1.1.0') < 0:
             schema_ns = [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]
         else:
             schema_ns = [self.BRICK]

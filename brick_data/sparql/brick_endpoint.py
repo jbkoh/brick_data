@@ -17,7 +17,7 @@ from rdflib import URIRef, Literal
 
 import validators
 
-from .common import VIRTUOSO
+from .common import VIRTUOSO, semver_compare
 
 def striding_windows(l, w_size):
     curr_idx = 0
@@ -296,8 +296,7 @@ class BrickSparql(object):
         res = self.query(q, is_update=True)
 
     def load_schema(self):
-        parsed_brick_version = semver.parse(self.BRICK_VERSION)
-        if parsed_brick_version['major'] <= 1 and parsed_brick_version['minor'] < 1:
+        if semver_copmare(self.BRICK_VERSION, '1.1.0') < 0:
             schema_ns = [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]
         else:
             schema_ns = [self.BRICK]
