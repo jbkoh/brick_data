@@ -20,7 +20,7 @@ class BrickSparqlAsync(BrickSparql):
         self.sparql = SPARQLClient(sparql_url)
 
     async def load_schema(self):
-        if semver_copmare(self.BRICK_VERSION, '1.1.0') < 0:
+        if semver_compare(self.BRICK_VERSION, '1.1.0') < 0:
             schema_ns = [self.BRICK, self.BRICK_USE, self.BF, self.BRICK_TAG]
         else:
             schema_ns = [self.BRICK]
