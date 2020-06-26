@@ -61,6 +61,10 @@ class BrickTimeseries(object):
             """,
 
             """
+            CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+            """,
+
+            """
             SELECT create_hypertable('brick_data', 'time');
             """,
 

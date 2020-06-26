@@ -74,6 +74,10 @@ class AsyncpgTimeseries(object):
             """.format(table_name=self.TABLE_NAME),
 
             """
+            CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+            """,
+
+            """
             SELECT create_hypertable('{table_name}', 'time');
             """.format(table_name=self.TABLE_NAME),
 
