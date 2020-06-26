@@ -74,6 +74,10 @@ class AsyncpgTimeseries(object):
             """.format(table_name=self.TABLE_NAME),
 
             """
+            SELECT create_hypertable('{table_name}', 'time');
+            """.format(table_name=self.TABLE_NAME),
+
+            """
             CREATE INDEX IF NOT EXISTS brick_data_time_index ON {table_name}
             (
                 time DESC

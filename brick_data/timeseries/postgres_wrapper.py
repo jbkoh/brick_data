@@ -61,6 +61,10 @@ class BrickTimeseries(object):
             """,
 
             """
+            SELECT create_hypertable('brick_data', 'time');
+            """,
+
+            """
             CREATE INDEX IF NOT EXISTS brick_data_time_index ON brick_data
             (
                 time DESC
