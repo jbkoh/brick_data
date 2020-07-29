@@ -90,7 +90,13 @@ class AsyncpgTimeseries(object):
         ]
         async with self.pool.acquire() as conn:
             for qstr in qstrs:
-                res = await conn.execute(qstr)
+                try:
+                    res = await conn.execute(qstr)
+                except Exception as e:
+                    if 'already a hypertable' in e:
+                        pass
+                    else:
+                        raise e
         print('init table')
 
     async def read_blob_fs(self, pointer):
