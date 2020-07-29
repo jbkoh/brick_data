@@ -93,7 +93,7 @@ class AsyncpgTimeseries(object):
                 try:
                     res = await conn.execute(qstr)
                 except Exception as e:
-                    if 'already a hypertable' in e:
+                    if 'already a hypertable' in str(e):
                         pass
                     else:
                         raise e
